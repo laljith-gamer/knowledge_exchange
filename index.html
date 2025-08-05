@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SkillShare - Knowledge Sharing Platform</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="page-section active">
+        <div class="container">
+            <div class="auth-card">
+                <div class="logo">
+                    <h1>SkillShare</h1>
+                    <p>Connect. Learn. Grow.</p>
+                </div>
+
+                <form id="loginForm" class="auth-form">
+                    <div class="input-group">
+                        <input type="text" id="loginIdentifier" placeholder="Email or Username" required>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="loginPassword" placeholder="Password" required>
+                    </div>
+                    <button type="submit" class="btn-primary" id="loginBtn">
+                        <span class="btn-text">Log In</span>
+                        <div class="loader hidden"></div>
+                    </button>
+                </form>
+
+                <div class="divider">
+                    <span>OR</span>
+                </div>
+
+                <div class="auth-links">
+                    <p>Don't have an account? <a id="goToSignup">Sign up</a></p>
+                </div>
+            </div>
+
+            <div id="loginError" class="error-message hidden"></div>
+        </div>
+    </div>
+
+    <!-- Signup Page -->
+    <div id="signupPage" class="page-section">
+        <div class="container">
+            <div class="auth-card">
+                <div class="logo">
+                    <h1>SkillShare</h1>
+                    <p>Join the knowledge community</p>
+                </div>
+
+                <form id="signupForm" class="auth-form">
+                    <div class="input-group">
+                        <input type="email" id="signupEmail" placeholder="Email" required>
+                    </div>
+                    <button type="submit" class="btn-primary" id="signupBtn">
+                        <span class="btn-text">Send OTP Code</span>
+                        <div class="loader hidden"></div>
+                    </button>
+                </form>
+
+                <div class="auth-links">
+                    <p>Already have an account? <a id="goToLogin">Log in</a></p>
+                </div>
+            </div>
+
+            <div id="signupError" class="error-message hidden"></div>
+            <div id="signupSuccess" class="success-message hidden"></div>
+        </div>
+    </div>
+
+    <!-- OTP Verification Page -->
+    <div id="otpPage" class="page-section">
+        <div class="container">
+            <div class="auth-card">
+                <div class="logo">
+                    <h1>SkillShare</h1>
+                    <p>Enter the 6-digit verification code sent to:<br><strong id="otpEmail"></strong></p>
+                </div>
+
+                <form id="otpForm" class="auth-form">
+                    <div class="input-group">
+                        <input type="text" id="otpCode" placeholder="000000" maxlength="6" required pattern="[0-9]{6}"
+                            autocomplete="one-time-code">
+                    </div>
+                    <button type="submit" class="btn-primary" id="otpBtn">
+                        <span class="btn-text">Verify Code</span>
+                        <div class="loader hidden"></div>
+                    </button>
+                </form>
+
+                <div class="auth-links">
+                    <p>Didn't receive the code? <button id="resendOtp" class="btn-text-link" type="button">Resend
+                            OTP</button></p>
+                    <p><a id="backToSignup">← Back to signup</a></p>
+                </div>
+            </div>
+
+            <div id="otpError" class="error-message hidden"></div>
+            <div id="otpSuccess" class="success-message hidden"></div>
+        </div>
+    </div>
+
+    <!-- Complete Profile Page -->
+    <div id="profilePage" class="page-section">
+        <div class="container">
+            <div class="auth-card">
+                <div class="logo">
+                    <h1>SkillShare</h1>
+                    <p>Complete your profile to get started</p>
+                </div>
+
+                <form id="profileForm" class="auth-form">
+                    <div class="input-group">
+                        <input type="text" id="fullName" placeholder="Full Name" required minlength="2">
+                    </div>
+                    <div class="input-group">
+                        <input type="text" id="username" placeholder="Username" required pattern="[a-zA-Z0-9_]+"
+                            minlength="3">
+                        <small style="color: #666; font-size: 12px;">Letters, numbers, and underscores only</small>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="password" placeholder="Create Password" required minlength="6">
+                        <small style="color: #666; font-size: 12px;">At least 6 characters</small>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="confirmPassword" placeholder="Confirm Password" required
+                            minlength="6">
+                    </div>
+                    <button type="submit" class="btn-primary" id="profileBtn">
+                        <span class="btn-text">Create Account</span>
+                        <div class="loader hidden"></div>
+                    </button>
+                </form>
+            </div>
+
+            <div id="profileError" class="error-message hidden"></div>
+            <div id="profileSuccess" class="success-message hidden"></div>
+        </div>
+    </div>
+
+    <!-- Home Page -->
+    <div id="homePage" class="page-section">
+        <div class="home-container">
+            <header class="header">
+                <div class="header-content">
+                    <div class="logo">
+                        <h2>SkillShare</h2>
+                    </div>
+                    <nav class="nav">
+                        <button class="nav-btn active" data-tab="home">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
+                            </svg>
+                            <span>Home</span>
+                        </button>
+                        <button class="nav-btn" data-tab="explore">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                            </svg>
+                            <span>Explore</span>
+                        </button>
+                        <button class="nav-btn" data-tab="profile">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+                            </svg>
+                            <span>Profile</span>
+                        </button>
+                    </nav>
+                    <div class="header-right">
+                        <span id="userWelcome" class="user-welcome">Welcome!</span>
+                        <button id="logoutBtn" class="logout-btn" title="Logout">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <main class="main-content">
+                <div class="feed-container">
+                    <div class="welcome-card">
+                        <h3>Welcome to SkillShare! 🎉</h3>
+                        <p>Share your expertise, learn from others, and grow together in our knowledge-sharing
+                            community.</p>
+                        <button class="btn-primary">Create Your First Skill Post</button>
+                    </div>
+
+                    <div class="empty-feed">
+                        <div class="empty-icon">
+                            <svg width="80" height="80" viewBox="0 0 24 24" fill="currentColor">
+                                <path
+                                    d="M9 11H7v9h2v-9zm4 0h-2v9h2v-9zm4 0h-2v9h2v-9zm2-7v2H4v2h1v11c0 1.1.9 2 2 2h10c1.1 0 2-.9 2-2V8h1V6H3V4h4.5l1-1h5l1 1H19z" />
+                            </svg>
+                        </div>
+                        <h3>No posts in your feed yet</h3>
+                        <p>Start following skilled people or create your first post to see content here!</p>
+                        <div style="margin-top: 20px;">
+                            <button class="btn-primary" style="width: auto; padding: 12px 24px;">Explore Skills</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
