@@ -1,2 +1,2 @@
 # knowledge_exchange
-share lnowledge grow knowledge 
+share knowledge grow knowledge 
