@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Configuration - UPDATE THIS URL TO YOUR RESET PASSWORD WEBSITE
-const RESET_PASSWORD_WEBSITE_URL = "https://knowledge-exchange-eight.vercel.app/";
+const RESET_PASSWORD_WEBSITE_URL = "https://reset-password-kappa.vercel.app/";
 
 // Global variables
 let currentUserEmail = "";
@@ -812,5 +812,6 @@ if (!document.querySelector('#ripple-styles')) {
     `;
     document.head.appendChild(style);
 }
+
 
 
