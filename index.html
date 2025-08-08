@@ -1,21 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SkillShare - Connect, Learn, Grow</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
-        rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
 </head>
-
 <body>
     <!-- Toast Container -->
     <div id="toastContainer" class="toast-container"></div>
-
+    
     <!-- Loading Overlay -->
     <div id="loadingOverlay" class="loading-overlay hidden">
         <div class="loading-spinner">
@@ -60,8 +57,7 @@
                             <input type="password" id="loginPassword" required autocomplete="current-password">
                             <label for="loginPassword">Password</label>
                             <i class="fas fa-lock input-icon"></i>
-                            <button type="button" class="password-toggle"
-                                onclick="togglePassword('loginPassword', this)">
+                            <button type="button" class="password-toggle" onclick="togglePassword('loginPassword', this)">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
@@ -82,8 +78,7 @@
                 </div>
 
                 <div class="auth-links">
-                    <p>Don't have an account? <a href="#" class="link-primary" onclick="showSignup()">Create one
-                            here</a></p>
+                    <p>Don't have an account? <a href="#" class="link-primary" onclick="showSignup()">Create one here</a></p>
                 </div>
             </div>
         </div>
@@ -131,8 +126,7 @@
                             <input type="password" id="signupPassword" required autocomplete="new-password">
                             <label for="signupPassword">Password</label>
                             <i class="fas fa-lock input-icon"></i>
-                            <button type="button" class="password-toggle"
-                                onclick="togglePassword('signupPassword', this)">
+                            <button type="button" class="password-toggle" onclick="togglePassword('signupPassword', this)">
                                 <i class="fas fa-eye"></i>
                             </button>
                         </div>
@@ -155,8 +149,7 @@
                 </div>
 
                 <div class="auth-links">
-                    <p>Already have an account? <a href="#" class="link-primary" onclick="showLogin()">Sign in here</a>
-                    </p>
+                    <p>Already have an account? <a href="#" class="link-primary" onclick="showLogin()">Sign in here</a></p>
                 </div>
             </div>
         </div>
@@ -171,13 +164,11 @@
                         <i class="fas fa-envelope-circle-check fa-lg"></i>
                     </div>
                     <h1 class="logo-text">Check Your Email</h1>
-                    <p class="logo-subtitle">We sent a verification link to <span class="highlight-email"
-                            id="verificationEmail"></span></p>
+                    <p class="logo-subtitle">We sent a verification link to <span class="highlight-email" id="verificationEmail"></span></p>
                 </div>
 
                 <div class="verification-instructions">
-                    <p>Click the link in your email to verify your account. If you don't see the email, check your spam
-                        folder.</p>
+                    <p>Click the link in your email to verify your account. If you don't see the email, check your spam folder.</p>
                 </div>
 
                 <button class="btn-secondary" onclick="resendVerification()">
@@ -202,8 +193,7 @@
                         <i class="fas fa-shield-keyhole fa-lg"></i>
                     </div>
                     <h1 class="logo-text">Enter OTP Code</h1>
-                    <p class="logo-subtitle">We sent a 6-digit code to <span class="highlight-email"
-                            id="otpEmail"></span></p>
+                    <p class="logo-subtitle">We sent a 6-digit code to <span class="highlight-email" id="otpEmail"></span></p>
                 </div>
 
                 <form class="auth-form" id="otpForm">
@@ -268,133 +258,6 @@
         </div>
     </div>
 
-    <!-- Reset Password Page -->
-    <div id="resetPasswordPage" class="page-section">
-        <div class="container">
-            <div class="reset-card glass-effect animate-fade-in">
-                <div class="logo">
-                    <div class="logo-icon reset-icon">
-                        <i class="fas fa-lock-open fa-lg"></i>
-                    </div>
-                    <h1 class="logo-text">New Password</h1>
-                    <p class="logo-subtitle">Create a strong, secure password</p>
-                </div>
-
-                <form class="auth-form" id="resetPasswordForm">
-                    <div class="input-group">
-                        <div class="floating-label">
-                            <input type="password" id="newPassword" required autocomplete="new-password">
-                            <label for="newPassword">New Password</label>
-                            <i class="fas fa-lock input-icon"></i>
-                            <button type="button" class="password-toggle" onclick="togglePassword('newPassword', this)">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                        <div class="password-strength hidden" id="newPasswordStrength">
-                            <div class="strength-bar">
-                                <div class="strength-fill" id="newStrengthFill"></div>
-                            </div>
-                            <div class="strength-text" id="newStrengthText">Enter a password</div>
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <div class="floating-label">
-                            <input type="password" id="confirmPassword" required autocomplete="new-password">
-                            <label for="confirmPassword">Confirm Password</label>
-                            <i class="fas fa-lock input-icon"></i>
-                            <button type="button" class="password-toggle"
-                                onclick="togglePassword('confirmPassword', this)">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div class="password-requirements">
-                        <h4>Password Requirements:</h4>
-                        <ul>
-                            <li>
-                                <span class="requirement-icon" id="req-length">
-                                    <i class="fas fa-times"></i>
-                                </span>
-                                At least 8 characters long
-                            </li>
-                            <li>
-                                <span class="requirement-icon" id="req-upper">
-                                    <i class="fas fa-times"></i>
-                                </span>
-                                Contains uppercase letter
-                            </li>
-                            <li>
-                                <span class="requirement-icon" id="req-lower">
-                                    <i class="fas fa-times"></i>
-                                </span>
-                                Contains lowercase letter
-                            </li>
-                            <li>
-                                <span class="requirement-icon" id="req-number">
-                                    <i class="fas fa-times"></i>
-                                </span>
-                                Contains a number
-                            </li>
-                            <li>
-                                <span class="requirement-icon" id="req-special">
-                                    <i class="fas fa-times"></i>
-                                </span>
-                                Contains special character
-                            </li>
-                        </ul>
-                    </div>
-
-                    <button type="submit" class="btn-primary">
-                        <span>Update Password</span>
-                        <i class="fas fa-check"></i>
-                    </button>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Success Page -->
-    <div id="successPage" class="page-section">
-        <div class="container">
-            <div class="success-card glass-effect animate-fade-in">
-                <div class="success-icon">
-                    <i class="fas fa-check fa-2x"></i>
-                </div>
-                <h2>Password Updated!</h2>
-                <p>Your password has been successfully updated. You can now sign in with your new password.</p>
-
-                <div class="countdown-timer">
-                    <p>Redirecting to sign in page in <span id="countdown">5</span> seconds</p>
-                </div>
-
-                <button class="btn-primary" onclick="showLogin()">
-                    <span>Sign In Now</span>
-                    <i class="fas fa-arrow-right"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Error Page -->
-    <div id="errorPage" class="page-section">
-        <div class="container">
-            <div class="error-card glass-effect animate-fade-in">
-                <div class="error-icon">
-                    <i class="fas fa-exclamation-triangle fa-2x"></i>
-                </div>
-                <h2 id="errorTitle">Something went wrong</h2>
-                <p id="errorMessage">We encountered an error processing your request. Please try again.</p>
-
-                <button class="btn-primary" onclick="showLogin()">
-                    <span>Back to Sign In</span>
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-            </div>
-        </div>
-    </div>
-
     <!-- Home Page (Placeholder) -->
     <div id="homePage" class="page-section">
         <div class="home-container">
@@ -426,15 +289,12 @@
                     </nav>
                 </div>
             </div>
-
+            
             <div style="padding: 80px 24px 24px;">
                 <div style="max-width: 1200px; margin: 0 auto;">
-                    <div class="welcome-card glass-effect"
-                        style="padding: 48px; border-radius: 20px; text-align: center; margin-bottom: 32px;">
-                        <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 16px;">Welcome to SkillShare! 🎉
-                        </h1>
-                        <p style="font-size: 1.2rem; opacity: 0.8;">Share your expertise, learn from others, and grow
-                            together in our vibrant knowledge-sharing community.</p>
+                    <div class="welcome-card glass-effect" style="padding: 48px; border-radius: 20px; text-align: center; margin-bottom: 32px;">
+                        <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 16px;">Welcome to SkillShare! 🎉</h1>
+                        <p style="font-size: 1.2rem; opacity: 0.8;">Share your expertise, learn from others, and grow together in our vibrant knowledge-sharing community.</p>
                     </div>
                 </div>
             </div>
@@ -443,5 +303,4 @@
 
     <script src="app.js"></script>
 </body>
-
 </html>
