@@ -1,306 +1,224 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SkillShare - Connect, Learn, Grow</title>
+    <title>SkillShare - Login & Signup</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
+
 <body>
-    <!-- Toast Container -->
-    <div id="toastContainer" class="toast-container"></div>
-    
-    <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="loading-overlay hidden">
-        <div class="loading-spinner">
-            <div class="spinner-ring"></div>
-            <div class="spinner-ring"></div>
-            <div class="spinner-ring"></div>
+    <div class="container">
+        <!-- Login Form -->
+        <div id="loginForm" class="form-container active">
+            <div class="logo">
+                <h1>SkillShare</h1>
+            </div>
+            <h2>Welcome Back</h2>
+            <form id="loginFormElement">
+                <div class="input-group">
+                    <label for="loginIdentifier">Username or Email</label>
+                    <input type="text" id="loginIdentifier" required>
+                </div>
+                <div class="input-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Login</button>
+                <p class="forgot-password">
+                    <a href="#" id="showForgotPassword">Forgot Password?</a>
+                </p>
+                <p class="switch-form">
+                    New here? <a href="#" id="showSignup">Sign up</a>
+                </p>
+            </form>
         </div>
-        <div class="loading-text">Processing...</div>
-    </div>
 
-    <!-- Animated Background -->
-    <div class="animated-bg">
-        <div class="bg-element bg-element-1"></div>
-        <div class="bg-element bg-element-2"></div>
-        <div class="bg-element bg-element-3"></div>
-        <div class="bg-element bg-element-4"></div>
-    </div>
-
-    <!-- Login Page -->
-    <div id="loginPage" class="page-section active">
-        <div class="container">
-            <div class="auth-card glass-effect animate-fade-in">
-                <div class="logo">
-                    <div class="logo-icon">
-                        <i class="fas fa-graduation-cap fa-lg"></i>
-                    </div>
-                    <h1 class="logo-text">SkillShare</h1>
-                    <p class="logo-subtitle">Connect, Learn, Grow Together</p>
+        <!-- Forgot Password Form -->
+        <div id="forgotPasswordForm" class="form-container">
+            <div class="logo">
+                <h1>SkillShare</h1>
+            </div>
+            <h2>Reset Password</h2>
+            <p class="info-text">Enter your email address and we'll send you a secure link to reset your password</p>
+            <form id="forgotPasswordFormElement">
+                <div class="input-group">
+                    <label for="resetEmail">Email Address</label>
+                    <input type="email" id="resetEmail" required>
                 </div>
+                <button type="submit" class="btn btn-primary">Send Reset Link</button>
+                <p class="switch-form">
+                    Remember your password? <a href="#" id="backToLogin">Login</a>
+                </p>
+            </form>
+        </div>
 
-                <form class="auth-form" id="loginForm">
-                    <div class="input-group">
-                        <div class="floating-label">
-                            <input type="email" id="loginEmail" required autocomplete="email">
-                            <label for="loginEmail">Email Address</label>
-                            <i class="fas fa-envelope input-icon"></i>
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <div class="floating-label">
-                            <input type="password" id="loginPassword" required autocomplete="current-password">
-                            <label for="loginPassword">Password</label>
-                            <i class="fas fa-lock input-icon"></i>
-                            <button type="button" class="password-toggle" onclick="togglePassword('loginPassword', this)">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn-primary">
-                        <span>Sign In</span>
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                </form>
-
-                <div class="forgot-password-link">
-                    <a href="#" onclick="showForgotPassword()">Forgot your password?</a>
+        <!-- Reset Password Confirmation -->
+        <div id="resetSentForm" class="form-container">
+            <div class="logo">
+                <h1>SkillShare</h1>
+            </div>
+            <h2>📧 Reset Link Sent</h2>
+            <div class="success-content">
+                <p class="info-text">We've sent a password reset link to your email address. Please check your inbox and
+                    click the link to reset your password.</p>
+                <div class="info-box">
+                    <p><strong>Didn't receive the email?</strong></p>
+                    <ul>
+                        <li>Check your spam/junk folder</li>
+                        <li>Make sure you entered the correct email</li>
+                        <li>Wait a few minutes for delivery</li>
+                    </ul>
                 </div>
+                <button id="backToLoginFromReset" class="btn btn-secondary">Back to Login</button>
+            </div>
+        </div>
 
-                <div class="divider">
-                    <span>or</span>
+        <!-- New Password Form -->
+        <div id="newPasswordForm" class="form-container">
+            <div class="logo">
+                <h1>SkillShare</h1>
+            </div>
+            <h2>Set New Password</h2>
+            <p class="info-text">Please enter your new password below</p>
+            <form id="newPasswordFormElement">
+                <div class="input-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" required minlength="6">
                 </div>
+                <div class="input-group">
+                    <label for="confirmNewPassword">Confirm New Password</label>
+                    <input type="password" id="confirmNewPassword" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary">Update Password</button>
+            </form>
+        </div>
 
-                <div class="auth-links">
-                    <p>Don't have an account? <a href="#" class="link-primary" onclick="showSignup()">Create one here</a></p>
+        <!-- Password Updated Confirmation -->
+        <div id="passwordUpdatedForm" class="form-container">
+            <div class="logo">
+                <h1>SkillShare</h1>
+            </div>
+            <h2>✅ Password Updated Successfully</h2>
+            <div class="success-content">
+                <p class="info-text">Your password has been successfully updated. You can now login with your new
+                    password.</p>
+                <button id="loginAfterReset" class="btn btn-primary">Login Now</button>
+            </div>
+        </div>
+
+        <!-- Email Verification Form -->
+        <div id="emailForm" class="form-container">
+            <div class="logo">
+                <h1>SkillShare</h1>
+            </div>
+            <h2>Join SkillShare</h2>
+            <form id="emailFormElement">
+                <div class="input-group">
+                    <label for="signupEmail">Email Address</label>
+                    <input type="email" id="signupEmail" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Send Verification Code</button>
+                <p class="switch-form">
+                    Already have an account? <a href="#" id="showLogin">Login</a>
+                </p>
+            </form>
+        </div>
+
+        <!-- OTP Verification Form -->
+        <div id="otpForm" class="form-container">
+            <div class="logo">
+                <h1>SkillShare</h1>
+            </div>
+            <h2>Verify Your Email</h2>
+            <p class="info-text">Enter the 6-digit code sent to <span id="otpEmailDisplay"></span></p>
+            <form id="otpFormElement">
+                <div class="input-group">
+                    <label for="otpCode">Verification Code</label>
+                    <input type="text" id="otpCode" maxlength="6" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Verify Email</button>
+                <button type="button" id="resendOtp" class="btn btn-secondary">Resend Code</button>
+            </form>
+        </div>
+
+        <!-- Profile Setup Form -->
+        <div id="profileForm" class="form-container">
+            <div class="logo">
+                <h1>SkillShare</h1>
+            </div>
+            <h2>Complete Your Profile</h2>
+            <form id="profileFormElement">
+                <div class="input-group">
+                    <label for="fullName">Full Name</label>
+                    <input type="text" id="fullName" required>
+                </div>
+                <div class="input-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required>
+                </div>
+                <div class="input-group">
+                    <label for="createPassword">Create Password</label>
+                    <input type="password" id="createPassword" required minlength="6">
+                </div>
+                <div class="input-group">
+                    <label for="confirmPassword">Confirm Password</label>
+                    <input type="password" id="confirmPassword" required minlength="6">
+                </div>
+                <button type="submit" class="btn btn-primary">Create Account</button>
+            </form>
+        </div>
+
+        <!-- Success Message -->
+        <div id="successMessage" class="form-container">
+            <div class="logo">
+                <h1>SkillShare</h1>
+            </div>
+            <h2>🎉 Welcome to SkillShare!</h2>
+            <div class="success-content">
+                <p class="info-text">Your account has been created successfully. You're now ready to start your learning
+                    journey!</p>
+                <button id="goToHome" class="btn btn-primary">Enter Dashboard</button>
+            </div>
+        </div>
+
+        <!-- Home Page -->
+        <div id="homePage" class="form-container">
+            <div class="header">
+                <h1>SkillShare Dashboard</h1>
+                <button id="logout" class="btn btn-logout">Logout</button>
+            </div>
+            <div class="welcome-section">
+                <h2>Welcome back, <span id="userFullName"></span>! 👋</h2>
+                <div class="user-info">
+                    <div class="info-item">
+                        <strong>Username:</strong> <span id="userUsername"></span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Email:</strong> <span id="userEmail"></span>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Signup Page -->
-    <div id="signupPage" class="page-section">
-        <div class="container">
-            <div class="auth-card glass-effect animate-fade-in">
-                <div class="logo">
-                    <div class="logo-icon">
-                        <i class="fas fa-user-plus fa-lg"></i>
-                    </div>
-                    <h1 class="logo-text">Join SkillShare</h1>
-                    <p class="logo-subtitle">Start your learning journey today</p>
-                </div>
-
-                <form class="auth-form" id="signupForm">
-                    <div class="input-group">
-                        <div class="floating-label">
-                            <input type="text" id="signupFullName" required>
-                            <label for="signupFullName">Full Name</label>
-                            <i class="fas fa-user input-icon"></i>
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <div class="floating-label">
-                            <input type="text" id="signupUsername" required>
-                            <label for="signupUsername">Username</label>
-                            <i class="fas fa-at input-icon"></i>
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <div class="floating-label">
-                            <input type="email" id="signupEmail" required autocomplete="email">
-                            <label for="signupEmail">Email Address</label>
-                            <i class="fas fa-envelope input-icon"></i>
-                        </div>
-                    </div>
-
-                    <div class="input-group">
-                        <div class="floating-label">
-                            <input type="password" id="signupPassword" required autocomplete="new-password">
-                            <label for="signupPassword">Password</label>
-                            <i class="fas fa-lock input-icon"></i>
-                            <button type="button" class="password-toggle" onclick="togglePassword('signupPassword', this)">
-                                <i class="fas fa-eye"></i>
-                            </button>
-                        </div>
-                        <div class="password-strength hidden" id="passwordStrength">
-                            <div class="strength-bar">
-                                <div class="strength-fill" id="strengthFill"></div>
-                            </div>
-                            <div class="strength-text" id="strengthText">Enter a password</div>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn-primary">
-                        <span>Create Account</span>
-                        <i class="fas fa-arrow-right"></i>
-                    </button>
-                </form>
-
-                <div class="divider">
-                    <span>or</span>
-                </div>
-
-                <div class="auth-links">
-                    <p>Already have an account? <a href="#" class="link-primary" onclick="showLogin()">Sign in here</a></p>
-                </div>
-            </div>
+        <!-- Loading Spinner -->
+        <div id="loading" class="loading">
+            <div class="spinner"></div>
+            <p>Processing...</p>
         </div>
-    </div>
 
-    <!-- Email Verification Page -->
-    <div id="verificationPage" class="page-section">
-        <div class="container">
-            <div class="auth-card glass-effect animate-fade-in">
-                <div class="logo">
-                    <div class="logo-icon verification-icon">
-                        <i class="fas fa-envelope-circle-check fa-lg"></i>
-                    </div>
-                    <h1 class="logo-text">Check Your Email</h1>
-                    <p class="logo-subtitle">We sent a verification link to <span class="highlight-email" id="verificationEmail"></span></p>
-                </div>
-
-                <div class="verification-instructions">
-                    <p>Click the link in your email to verify your account. If you don't see the email, check your spam folder.</p>
-                </div>
-
-                <button class="btn-secondary" onclick="resendVerification()">
-                    <i class="fas fa-paper-plane"></i>
-                    <span>Resend Email</span>
-                </button>
-
-                <div class="auth-links">
-                    <p>Wrong email? <a href="#" class="link-primary" onclick="showSignup()">Try again</a></p>
-                    <p>Already verified? <a href="#" class="link-primary" onclick="showLogin()">Sign in</a></p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- OTP Verification Page -->
-    <div id="otpPage" class="page-section">
-        <div class="container">
-            <div class="auth-card glass-effect animate-fade-in">
-                <div class="logo">
-                    <div class="logo-icon verification-icon">
-                        <i class="fas fa-shield-keyhole fa-lg"></i>
-                    </div>
-                    <h1 class="logo-text">Enter OTP Code</h1>
-                    <p class="logo-subtitle">We sent a 6-digit code to <span class="highlight-email" id="otpEmail"></span></p>
-                </div>
-
-                <form class="auth-form" id="otpForm">
-                    <div class="otp-container">
-                        <input type="text" class="otp-input" maxlength="1" data-index="0">
-                        <input type="text" class="otp-input" maxlength="1" data-index="1">
-                        <input type="text" class="otp-input" maxlength="1" data-index="2">
-                        <input type="text" class="otp-input" maxlength="1" data-index="3">
-                        <input type="text" class="otp-input" maxlength="1" data-index="4">
-                        <input type="text" class="otp-input" maxlength="1" data-index="5">
-                    </div>
-
-                    <button type="submit" class="btn-primary">
-                        <span>Verify Code</span>
-                        <i class="fas fa-check"></i>
-                    </button>
-                </form>
-
-                <div class="otp-timer">
-                    <p>Code expires in <span id="timer">05:00</span></p>
-                </div>
-
-                <div class="auth-links">
-                    <p>Didn't receive code? <a href="#" class="link-primary" onclick="resendOTP()">Resend</a></p>
-                    <p>Wrong email? <a href="#" class="link-primary" onclick="showLogin()">Go back</a></p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Forgot Password Page -->
-    <div id="forgotPasswordPage" class="page-section">
-        <div class="container">
-            <div class="auth-card glass-effect animate-fade-in">
-                <div class="logo">
-                    <div class="logo-icon forgot-icon">
-                        <i class="fas fa-key fa-lg"></i>
-                    </div>
-                    <h1 class="logo-text">Reset Password</h1>
-                    <p class="logo-subtitle">Enter your email to receive a reset link</p>
-                </div>
-
-                <form class="auth-form" id="forgotPasswordForm">
-                    <div class="input-group">
-                        <div class="floating-label">
-                            <input type="email" id="forgotEmail" required autocomplete="email">
-                            <label for="forgotEmail">Email Address</label>
-                            <i class="fas fa-envelope input-icon"></i>
-                        </div>
-                    </div>
-
-                    <button type="submit" class="btn-primary">
-                        <span>Send Reset Link</span>
-                        <i class="fas fa-paper-plane"></i>
-                    </button>
-                </form>
-
-                <div class="auth-links">
-                    <p>Remember your password? <a href="#" class="link-primary" onclick="showLogin()">Sign in</a></p>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Home Page (Placeholder) -->
-    <div id="homePage" class="page-section">
-        <div class="home-container">
-            <div class="header glass-effect">
-                <div class="header-content">
-                    <div class="logo">
-                        <div class="logo-icon small">
-                            <i class="fas fa-graduation-cap"></i>
-                        </div>
-                        <h2>SkillShare</h2>
-                    </div>
-                    <nav class="nav">
-                        <button class="nav-btn active">
-                            <i class="fas fa-home"></i>
-                            <span>Feed</span>
-                        </button>
-                        <button class="nav-btn">
-                            <i class="fas fa-search"></i>
-                            <span>Explore</span>
-                        </button>
-                        <button class="nav-btn">
-                            <i class="fas fa-plus"></i>
-                            <span>Create</span>
-                        </button>
-                        <button class="nav-btn" onclick="logout()">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <span>Logout</span>
-                        </button>
-                    </nav>
-                </div>
-            </div>
-            
-            <div style="padding: 80px 24px 24px;">
-                <div style="max-width: 1200px; margin: 0 auto;">
-                    <div class="welcome-card glass-effect" style="padding: 48px; border-radius: 20px; text-align: center; margin-bottom: 32px;">
-                        <h1 style="font-size: 2.5rem; font-weight: 800; margin-bottom: 16px;">Welcome to SkillShare! 🎉</h1>
-                        <p style="font-size: 1.2rem; opacity: 0.8;">Share your expertise, learn from others, and grow together in our vibrant knowledge-sharing community.</p>
-                    </div>
-                </div>
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message">
+            <div class="error-content">
+                <p id="errorText"></p>
+                <button id="closeError" class="btn btn-secondary">Close</button>
             </div>
         </div>
     </div>
 
     <script src="app.js"></script>
 </body>
+
 </html>
