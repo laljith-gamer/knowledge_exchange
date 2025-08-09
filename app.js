@@ -2,8 +2,8 @@
 const SUPABASE_URL = "https://lnmrfqiozzmjbrugnpep.supabase.co";
 const SUPABASE_ANON_KEY ="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxubXJmcWlvenptamJydWducGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNzg4MjAsImV4cCI6MjA2OTg1NDgyMH0.CUxbI2BWeQv-u0-IEuef7BtgfW98k23Apmj3zayth6k";
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-console.log('Supabase URL:', supabaseUrl);
-console.log('Supabase Key starts with:', supabaseKey.substring(0, 10) + '...');
+console.log('Supabase URL:', SUPABASE_URL);
+console.log('Supabase Key starts with:', SUPABASE_ANON_KEY.substring(0, 10) + '...');
 let currentEmail = '';
 let currentUser = null;
 let isPasswordReset = false;
@@ -600,5 +600,6 @@ supabase.auth.onAuthStateChange((event, session) => {
         }
     }
 });
+
 
 
