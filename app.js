@@ -1,9 +1,10 @@
-// Supabase Configuration
-const SUPABASE_URL = "https://lnmrfqiozzmjbrugnpep.supabase.co";
-const SUPABASE_ANON_KEY ="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxubXJmcWlvenptamJydWducGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNzg4MjAsImV4cCI6MjA2OTg1NDgyMH0.CUxbI2BWeQv-u0-IEuef7BtgfW98k23Apmj3zayth6k";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-console.log('Supabase URL:', SUPABASE_URL);
-console.log('Supabase Key starts with:', SUPABASE_ANON_KEY.substring(0, 10) + '...');
+
+// ⚠️ IMPORTANT: Replace these with your ACTUAL Supabase credentials
+const supabaseUrl = "https://lnmrfqiozzmjbrugnpep.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxubXJmcWlvenptamJydWducGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNzg4MjAsImV4cCI6MjA2OTg1NDgyMH0.CUxbI2BWeQv-u0-IEuef7BtgfW98k23Apmj3zayth6k";
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+// State management
 let currentEmail = '';
 let currentUser = null;
 let isPasswordReset = false;
@@ -69,6 +70,7 @@ async function checkAuth() {
         
         // Check if this is a password reset callback
         if (urlParams.type === 'recovery' && urlParams.access_token) {
+            console.log('🔄 Password reset detected');
             isPasswordReset = true;
             
             // Set the session from URL parameters
@@ -77,7 +79,14 @@ async function checkAuth() {
                 refresh_token: urlParams.refresh_token
             });
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Reset session error:', error);
+                showError('Invalid or expired reset link. Please request a new one.');
+                showForm('login');
+                return;
+            }
+            
+            console.log('✅ Reset session established');
             
             // Clear URL parameters
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -94,7 +103,7 @@ async function checkAuth() {
         }
     } catch (error) {
         console.error('Auth check error:', error);
-        showError('Authentication error. Please try again.');
+        showError('Authentication error. Please check your internet connection.');
     }
 }
 
@@ -107,7 +116,10 @@ async function loadUserProfile(user) {
             .eq('id', user.id)
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Profile load error:', error);
+            return;
+        }
 
         if (profile) {
             document.getElementById('userFullName').textContent = profile.full_name;
@@ -170,7 +182,7 @@ async function handleLogin(event) {
     }
 }
 
-// Forgot password functionality
+// ✅ CORRECTED: Forgot password functionality
 async function handleForgotPassword(event) {
     event.preventDefault();
     showLoading();
@@ -184,16 +196,23 @@ async function handleForgotPassword(event) {
     }
 
     try {
+        console.log('🔄 Sending password reset to:', email);
+        
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: window.location.origin + window.location.pathname
+            redirectTo: 'https://knowledge-exchange-eight.vercel.app'
         });
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Reset email error:', error);
+            throw error;
+        }
 
+        console.log('✅ Reset email sent successfully');
         currentEmail = email;
         showForm('resetSent');
     } catch (error) {
-        showError('Error sending reset email. Please try again.');
+        console.error('Password reset error:', error);
+        showError('Error sending reset email. Please check your email address and try again.');
     } finally {
         hideLoading();
     }
@@ -226,16 +245,23 @@ async function handleNewPassword(event) {
     }
 
     try {
+        console.log('🔄 Updating password...');
+        
         const { error } = await supabase.auth.updateUser({
             password: newPassword
         });
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Password update error:', error);
+            throw error;
+        }
 
+        console.log('✅ Password updated successfully');
         isPasswordReset = false;
         showForm('passwordUpdated');
     } catch (error) {
-        showError('Error updating password. Please try again.');
+        console.error('Password update error:', error);
+        showError('Error updating password. Please try the reset process again.');
     } finally {
         hideLoading();
     }
@@ -600,6 +626,3 @@ supabase.auth.onAuthStateChange((event, session) => {
         }
     }
 });
-
-
-
