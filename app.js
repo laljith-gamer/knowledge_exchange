@@ -2,12 +2,15 @@
 let currentEmail = "";
 let currentUsername = "";
 let pendingSignup = false;
+let pendingMagicLink = "";
 
 // DOM elements
 const sections = {
   checkUser: document.getElementById("check-user-section"),
   login: document.getElementById("login-section"),
   signup: document.getElementById("signup-section"),
+  magicLink: document.getElementById("magic-link-section"),
+  magicLinkSent: document.getElementById("magic-link-sent-section"),
   otp: document.getElementById("otp-section"),
   home: document.getElementById("home-section"),
 };
@@ -16,7 +19,42 @@ const sections = {
 document.addEventListener("DOMContentLoaded", async () => {
   await checkAuthState();
   setupEventListeners();
+  handleAuthCallback();
 });
+
+// Handle auth callback (for magic links)
+async function handleAuthCallback() {
+  const urlParams = new URLSearchParams(window.location.search);
+  const accessToken = urlParams.get("access_token");
+  const refreshToken = urlParams.get("refresh_token");
+
+  if (accessToken && refreshToken) {
+    try {
+      const { data, error } = await supabaseClient.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      });
+
+      if (error) {
+        console.error("Session error:", error);
+        return;
+      }
+
+      if (data.user) {
+        // Clear URL parameters
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
+        showSection("home");
+        displayUserInfo(data.user);
+      }
+    } catch (error) {
+      console.error("Auth callback error:", error);
+    }
+  }
+}
 
 // Check if user is already logged in
 async function checkAuthState() {
@@ -49,9 +87,15 @@ function setupEventListeners() {
   document
     .getElementById("check-user-form")
     .addEventListener("submit", handleCheckUser);
+  document
+    .getElementById("magic-link-option")
+    .addEventListener("click", () => showSection("magicLink"));
 
   // Login form
   document.getElementById("login-form").addEventListener("submit", handleLogin);
+  document
+    .getElementById("login-magic-link")
+    .addEventListener("click", handleLoginMagicLink);
   document
     .getElementById("back-to-check")
     .addEventListener("click", () => showSection("checkUser"));
@@ -63,6 +107,22 @@ function setupEventListeners() {
   document
     .getElementById("back-to-check-signup")
     .addEventListener("click", () => showSection("checkUser"));
+
+  // Magic link form
+  document
+    .getElementById("magic-link-form")
+    .addEventListener("submit", handleMagicLinkRequest);
+  document
+    .getElementById("back-to-check-magic")
+    .addEventListener("click", () => showSection("checkUser"));
+
+  // Magic link sent actions
+  document
+    .getElementById("resend-magic-link")
+    .addEventListener("click", resendMagicLink);
+  document
+    .getElementById("back-to-magic-form")
+    .addEventListener("click", () => showSection("magicLink"));
 
   // OTP form
   document
@@ -139,7 +199,6 @@ async function handleCheckUser(e) {
       userEmail = emailUsername;
     } else {
       // Search for username in user metadata
-      // Note: This requires RLS policies to be set up properly
       const { data, error } = await supabaseClient.rpc("get_user_by_username", {
         username_input: emailUsername,
       });
@@ -149,7 +208,7 @@ async function handleCheckUser(e) {
         userEmail = data[0].email;
       } else {
         userExists = false;
-        userEmail = ""; // We'll need to ask for email in signup
+        userEmail = "";
       }
     }
 
@@ -174,7 +233,6 @@ async function handleCheckUser(e) {
           "signup-email"
         ).textContent = `Create account with username: ${emailUsername}`;
         currentUsername = emailUsername;
-        // We'll need to ask for email in the signup form
       }
       showSection("signup");
     }
@@ -223,6 +281,25 @@ async function handleLogin(e) {
   } finally {
     submitBtn.classList.remove("loading");
     submitBtn.disabled = false;
+  }
+}
+
+// Handle login magic link
+async function handleLoginMagicLink() {
+  const btn = document.getElementById("login-magic-link");
+  btn.classList.add("loading");
+  btn.disabled = true;
+
+  try {
+    await sendMagicLink(currentEmail);
+    pendingMagicLink = currentEmail;
+    document.getElementById("magic-sent-email").textContent = currentEmail;
+    showSection("magicLinkSent");
+  } catch (error) {
+    showError("login-error", "Failed to send magic link. Please try again.");
+  } finally {
+    btn.classList.remove("loading");
+    btn.disabled = false;
   }
 }
 
@@ -298,6 +375,81 @@ async function handleSignup(e) {
   }
 }
 
+// Handle magic link request
+async function handleMagicLinkRequest(e) {
+  e.preventDefault();
+
+  const email = document.getElementById("magic-link-email").value.trim();
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+
+  if (!email) {
+    showError("magic-link-error", "Please enter your email address");
+    return;
+  }
+
+  if (!email.includes("@")) {
+    showError("magic-link-error", "Please enter a valid email address");
+    return;
+  }
+
+  submitBtn.classList.add("loading");
+  submitBtn.disabled = true;
+
+  try {
+    await sendMagicLink(email);
+    pendingMagicLink = email;
+    document.getElementById("magic-sent-email").textContent = email;
+    showSection("magicLinkSent");
+  } catch (error) {
+    showError(
+      "magic-link-error",
+      error.message || "Failed to send magic link. Please try again."
+    );
+  } finally {
+    submitBtn.classList.remove("loading");
+    submitBtn.disabled = false;
+  }
+}
+
+// Send magic link
+async function sendMagicLink(email) {
+  const { error } = await supabaseClient.auth.signInWithOtp({
+    email: email,
+    options: {
+      emailRedirectTo: window.location.origin,
+    },
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+// Resend magic link
+async function resendMagicLink() {
+  const btn = document.getElementById("resend-magic-link");
+  btn.classList.add("loading");
+  btn.disabled = true;
+
+  try {
+    await sendMagicLink(pendingMagicLink);
+    // Show success message temporarily
+    const originalText = btn.textContent;
+    btn.textContent = "Magic Link Sent!";
+    setTimeout(() => {
+      btn.textContent = originalText;
+    }, 3000);
+  } catch (error) {
+    showError(
+      "magic-sent-error",
+      "Failed to resend magic link. Please try again."
+    );
+  } finally {
+    btn.classList.remove("loading");
+    btn.disabled = false;
+  }
+}
+
 // Handle OTP verification
 async function handleOTPVerification(e) {
   e.preventDefault();
@@ -352,7 +504,7 @@ async function resendOTP() {
     if (error) {
       showError("otp-error", "Failed to resend code. Please try again.");
     } else {
-      showError("otp-error", ""); // Clear error
+      showError("otp-error", "");
       // Show success message temporarily
       const originalText = resendBtn.textContent;
       resendBtn.textContent = "Code sent!";
@@ -396,6 +548,7 @@ async function handleLogout() {
     currentEmail = "";
     currentUsername = "";
     pendingSignup = false;
+    pendingMagicLink = "";
 
     // Clear forms
     document.querySelectorAll("form").forEach((form) => form.reset());
