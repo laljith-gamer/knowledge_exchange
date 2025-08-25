@@ -1,4 +1,4 @@
-/* layout */
+/* core */
 * {
     box-sizing: border-box;
     margin: 0;
@@ -6,7 +6,7 @@
 }
 
 body {
-    font-family: 'Segoe UI', Arial, sans-serif;
+    font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
     min-height: 100vh;
     display: flex;
     align-items: center;
@@ -15,14 +15,14 @@ body {
 }
 
 .container {
-    width: 100%;
     max-width: 400px;
-    margin: 20px
+    width: 100%;
+    margin: 24px
 }
 
 .panel {
     display: none;
-    animation: fade .3s ease
+    animation: fade .25s ease
 }
 
 .panel.active {
@@ -32,7 +32,7 @@ body {
 @keyframes fade {
     from {
         opacity: 0;
-        transform: translateY(20px)
+        transform: translateY(12px)
     }
 
     to {
@@ -44,14 +44,14 @@ body {
 /* card */
 .card {
     background: #fff;
-    border-radius: 15px;
-    padding: 40px 30px;
-    box-shadow: 0 20px 40px rgba(0, 0, 0, .1)
+    border-radius: 14px;
+    box-shadow: 0 18px 38px rgba(0, 0, 0, .12);
+    padding: 40px 32px
 }
 
 h2 {
     text-align: center;
-    margin-bottom: 25px;
+    margin-bottom: 24px;
     color: #333;
     font-weight: 600
 }
@@ -59,11 +59,11 @@ h2 {
 .hint {
     text-align: center;
     margin-bottom: 20px;
-    color: #666;
+    color: #555;
     font-size: 14px
 }
 
-/* inputs & buttons */
+/* form */
 input {
     width: 100%;
     padding: 14px;
@@ -71,64 +71,58 @@ input {
     border-radius: 10px;
     font-size: 16px;
     background: #f8f9fa;
-    margin-bottom: 18px
+    margin-bottom: 18px;
+    transition: border .2s
 }
 
 input:focus {
+    outline: none;
     border-color: #667eea;
-    background: #fff;
-    outline: none
+    background: #fff
 }
 
-.btn-primary,
-.btn-secondary {
+/* buttons */
+.btn {
     width: 100%;
     padding: 14px;
     border: none;
     border-radius: 10px;
-    font-size: 16px;
     font-weight: 600;
-    color: #fff;
-    cursor: pointer
+    cursor: pointer;
+    font-size: 15px;
+    transition: transform .15s
 }
 
-.btn-primary {
+.btn.primary {
+    color: #fff;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)
 }
 
-.btn-secondary {
-    background: #6c757d;
-    margin-top: 20px
-}
-
-.btn-primary:hover {
+.btn.primary:hover {
     transform: translateY(-2px)
 }
 
-.btn-link {
-    background: none;
-    border: none;
-    color: #667eea;
-    font-size: 14px;
-    cursor: pointer
+.btn.secondary {
+    background: #6c757d;
+    color: #fff;
+    margin-top: 16px
 }
 
-.btn-link:hover {
+.btn.link {
+    background: none;
+    color: #667eea;
+    font-size: 14px;
+    margin-top: 12px
+}
+
+.btn.link:hover {
     text-decoration: underline
 }
 
-.msg-err {
-    color: #dc3545;
-    font-size: 14px;
-    min-height: 18px;
-    text-align: center;
-    margin-top: -6px
-}
-
-/* loading spinner */
+/* spinner */
 .loading {
-    color: transparent;
-    position: relative
+    position: relative;
+    color: transparent !important
 }
 
 .loading::after {
@@ -136,9 +130,9 @@ input:focus {
     position: absolute;
     top: 50%;
     left: 50%;
+    margin: -9px;
     width: 18px;
     height: 18px;
-    margin: -9px;
     border: 2px solid #fff;
     border-top-color: transparent;
     border-radius: 50%;
@@ -151,9 +145,28 @@ input:focus {
     }
 }
 
-/* responsive */
+/* misc */
+.error {
+    color: #dc3545;
+    font-size: 14px;
+    min-height: 18px;
+    text-align: center
+}
+
+.user-box {
+    background: #f8f9fa;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 18px
+}
+
+.user-box p {
+    margin-bottom: 8px;
+    color: #333
+}
+
 @media(max-width:480px) {
     .card {
-        padding: 30px 20px
+        padding: 32px 22px
     }
 }
