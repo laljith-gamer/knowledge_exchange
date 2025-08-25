@@ -1,532 +1,291 @@
-// Global variables
+// ---------- Supabase ----------
+const supabase = window.supabaseClient;
+
+// ---------- State ----------
 let currentEmail = "";
 let currentUsername = "";
 let pendingSignup = false;
-let pendingMagicLink = "";
 
-// DOM elements
+// ---------- Sections ----------
 const sections = {
   checkUser: document.getElementById("check-user-section"),
   login: document.getElementById("login-section"),
   signup: document.getElementById("signup-section"),
-  magicLink: document.getElementById("magic-link-section"),
-  magicLinkSent: document.getElementById("magic-link-sent-section"),
   otp: document.getElementById("otp-section"),
   home: document.getElementById("home-section"),
 };
 
-// Initialize app
+// ---------- Init ----------
 document.addEventListener("DOMContentLoaded", async () => {
-  await checkAuthState();
-  setupEventListeners();
-  handleAuthCallback();
+  await restoreSession();
+  initListeners();
 });
 
-// Handle auth callback (for magic links)
-async function handleAuthCallback() {
-  const urlParams = new URLSearchParams(window.location.search);
-  const accessToken = urlParams.get("access_token");
-  const refreshToken = urlParams.get("refresh_token");
-
-  if (accessToken && refreshToken) {
-    try {
-      const { data, error } = await supabaseClient.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      });
-
-      if (error) {
-        console.error("Session error:", error);
-        return;
-      }
-
-      if (data.user) {
-        // Clear URL parameters
-        window.history.replaceState(
-          {},
-          document.title,
-          window.location.pathname
-        );
-        showSection("home");
-        displayUserInfo(data.user);
-      }
-    } catch (error) {
-      console.error("Auth callback error:", error);
-    }
+// ---------- Session ----------
+async function restoreSession() {
+  const {
+    data: { session },
+    error,
+  } = await supabase.auth.getSession();
+  if (session?.user) {
+    show("home");
+    renderUser(session.user);
+  } else {
+    show("checkUser");
   }
 }
 
-// Check if user is already logged in
-async function checkAuthState() {
-  try {
-    const {
-      data: { session },
-      error,
-    } = await supabaseClient.auth.getSession();
-
-    if (error) {
-      console.error("Session error:", error);
-      return;
-    }
-
-    if (session && session.user) {
-      showSection("home");
-      displayUserInfo(session.user);
-    } else {
-      showSection("checkUser");
-    }
-  } catch (error) {
-    console.error("Auth check error:", error);
-    showSection("checkUser");
-  }
+// ---------- UI helpers ----------
+function show(key) {
+  Object.values(sections).forEach((sec) => sec.classList.remove("active"));
+  sections[key].classList.add("active");
+  document
+    .querySelectorAll(".error-message")
+    .forEach((e) => (e.textContent = ""));
+}
+function err(id, msg) {
+  document.getElementById(id).textContent = msg;
 }
 
-// Setup event listeners
-function setupEventListeners() {
-  // Check user form
+// ---------- Listeners ----------
+function initListeners() {
+  /* email / username step */
   document
     .getElementById("check-user-form")
-    .addEventListener("submit", handleCheckUser);
-  document
-    .getElementById("magic-link-option")
-    .addEventListener("click", () => showSection("magicLink"));
+    .addEventListener("submit", checkUser);
 
-  // Login form
-  document.getElementById("login-form").addEventListener("submit", handleLogin);
-  document
-    .getElementById("login-magic-link")
-    .addEventListener("click", handleLoginMagicLink);
+  /* login */
+  document.getElementById("login-form").addEventListener("submit", login);
   document
     .getElementById("back-to-check")
-    .addEventListener("click", () => showSection("checkUser"));
+    .addEventListener("click", () => show("checkUser"));
 
-  // Signup form
-  document
-    .getElementById("signup-form")
-    .addEventListener("submit", handleSignup);
+  /* signup */
+  document.getElementById("signup-form").addEventListener("submit", signup);
   document
     .getElementById("back-to-check-signup")
-    .addEventListener("click", () => showSection("checkUser"));
+    .addEventListener("click", () => show("checkUser"));
 
-  // Magic link form
-  document
-    .getElementById("magic-link-form")
-    .addEventListener("submit", handleMagicLinkRequest);
-  document
-    .getElementById("back-to-check-magic")
-    .addEventListener("click", () => showSection("checkUser"));
-
-  // Magic link sent actions
-  document
-    .getElementById("resend-magic-link")
-    .addEventListener("click", resendMagicLink);
-  document
-    .getElementById("back-to-magic-form")
-    .addEventListener("click", () => showSection("magicLink"));
-
-  // OTP form
-  document
-    .getElementById("otp-form")
-    .addEventListener("submit", handleOTPVerification);
-  document.getElementById("resend-otp").addEventListener("click", resendOTP);
-
-  // Logout
-  document.getElementById("logout-btn").addEventListener("click", handleLogout);
-
-  // Auto-format OTP input
+  /* otp */
+  document.getElementById("otp-form").addEventListener("submit", verifyOtp);
+  document.getElementById("resend-otp").addEventListener("click", resendOtp);
   document.getElementById("otp-code").addEventListener("input", (e) => {
     e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6);
   });
 
-  // Password confirmation validation
-  document
-    .getElementById("confirm-password")
-    .addEventListener("input", validatePasswordMatch);
-}
+  /* logout */
+  document.getElementById("logout-btn").addEventListener("click", logout);
 
-// Show specific section
-function showSection(sectionName) {
-  Object.values(sections).forEach((section) => {
-    section.classList.remove("active");
+  /* password confirm helper */
+  document.getElementById("confirm-password").addEventListener("input", () => {
+    const p = document.getElementById("signup-password").value;
+    const c = document.getElementById("confirm-password").value;
+    err("signup-error", p && c && p !== c ? "Passwords do not match" : "");
   });
-  sections[sectionName].classList.add("active");
-
-  // Clear error messages
-  clearErrors();
 }
 
-// Clear all error messages
-function clearErrors() {
-  document
-    .querySelectorAll(".error-message")
-    .forEach((el) => (el.textContent = ""));
-}
-
-// Show error message
-function showError(elementId, message) {
-  document.getElementById(elementId).textContent = message;
-}
-
-// Check if user exists
-async function handleCheckUser(e) {
+// ---------- Step 1: check if user exists ----------
+async function checkUser(e) {
   e.preventDefault();
-
-  const emailUsername = document.getElementById("email-username").value.trim();
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-
-  if (!emailUsername) {
-    showError("check-error", "Please enter email or username");
+  const field = document.getElementById("email-username");
+  const value = field.value.trim();
+  if (!value) {
+    err("check-error", "Please enter email or username");
     return;
   }
 
-  submitBtn.classList.add("loading");
-  submitBtn.disabled = true;
-
+  const btn = e.target.querySelector("button");
+  btn.classList.add("loading");
+  btn.disabled = true;
   try {
-    const isEmail = emailUsername.includes("@");
-    let userExists = false;
+    const isEmail = value.includes("@");
+    let exists = false;
     let userEmail = "";
 
     if (isEmail) {
-      // Check if email exists by attempting to sign in with a dummy password
-      const { error } = await supabaseClient.auth.signInWithPassword({
-        email: emailUsername,
-        password: "dummy-password-check",
+      const { error } = await supabase.auth.signInWithPassword({
+        email: value,
+        password: "dummy",
       });
-
-      // If error is not "Invalid login credentials", user exists
-      userExists = error && error.message !== "Invalid login credentials";
-      userEmail = emailUsername;
+      exists = error && error.message !== "Invalid login credentials";
+      userEmail = value;
     } else {
-      // Search for username in user metadata
-      const { data, error } = await supabaseClient.rpc("get_user_by_username", {
-        username_input: emailUsername,
+      const { data } = await supabase.rpc("get_user_by_username", {
+        username_input: value,
       });
-
-      if (!error && data && data.length > 0) {
-        userExists = true;
-        userEmail = data[0].email;
-      } else {
-        userExists = false;
-        userEmail = "";
-      }
+      exists = data?.length > 0;
+      userEmail = data?.[0]?.email || "";
     }
 
-    currentEmail = userEmail || emailUsername;
-    currentUsername = !isEmail ? emailUsername : "";
+    currentEmail = userEmail || value;
+    currentUsername = isEmail ? "" : value;
 
-    if (userExists && userEmail) {
-      // User exists, show login
+    if (exists && userEmail) {
       document.getElementById(
         "login-email"
       ).textContent = `Welcome back! Please enter your password for ${userEmail}`;
-      showSection("login");
+      show("login");
     } else {
-      // New user, show signup
-      if (isEmail) {
-        document.getElementById(
-          "signup-email"
-        ).textContent = `Create account for ${emailUsername}`;
-        currentEmail = emailUsername;
-      } else {
-        document.getElementById(
-          "signup-email"
-        ).textContent = `Create account with username: ${emailUsername}`;
-        currentUsername = emailUsername;
-      }
-      showSection("signup");
+      document.getElementById("signup-email").textContent = isEmail
+        ? `Create account for ${value}`
+        : `Create account with username: ${value}`;
+      show("signup");
     }
-  } catch (error) {
-    console.error("Check user error:", error);
-    showError("check-error", "Something went wrong. Please try again.");
-  } finally {
-    submitBtn.classList.remove("loading");
-    submitBtn.disabled = false;
-  }
-}
-
-// Handle login
-async function handleLogin(e) {
-  e.preventDefault();
-
-  const password = document.getElementById("login-password").value;
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-
-  if (!password) {
-    showError("login-error", "Please enter your password");
-    return;
-  }
-
-  submitBtn.classList.add("loading");
-  submitBtn.disabled = true;
-
-  try {
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-      email: currentEmail,
-      password: password,
-    });
-
-    if (error) {
-      showError("login-error", error.message);
-      return;
-    }
-
-    if (data.user) {
-      showSection("home");
-      displayUserInfo(data.user);
-    }
-  } catch (error) {
-    console.error("Login error:", error);
-    showError("login-error", "Login failed. Please try again.");
-  } finally {
-    submitBtn.classList.remove("loading");
-    submitBtn.disabled = false;
-  }
-}
-
-// Handle login magic link
-async function handleLoginMagicLink() {
-  const btn = document.getElementById("login-magic-link");
-  btn.classList.add("loading");
-  btn.disabled = true;
-
-  try {
-    await sendMagicLink(currentEmail);
-    pendingMagicLink = currentEmail;
-    document.getElementById("magic-sent-email").textContent = currentEmail;
-    showSection("magicLinkSent");
-  } catch (error) {
-    showError("login-error", "Failed to send magic link. Please try again.");
+  } catch (err0) {
+    console.error(err0);
+    err("check-error", "Something went wrong, try again.");
   } finally {
     btn.classList.remove("loading");
     btn.disabled = false;
   }
 }
 
-// Handle signup
-async function handleSignup(e) {
+// ---------- Login ----------
+async function login(e) {
   e.preventDefault();
+  const password = document.getElementById("login-password").value;
+  if (!password) {
+    err("login-error", "Enter your password");
+    return;
+  }
 
+  const btn = e.target.querySelector("button");
+  btn.classList.add("loading");
+  btn.disabled = true;
+  try {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: currentEmail,
+      password,
+    });
+    if (error) {
+      err("login-error", error.message);
+      return;
+    }
+    if (data.user) {
+      show("home");
+      renderUser(data.user);
+    }
+  } catch (err0) {
+    console.error(err0);
+    err("login-error", "Login failed. Try again.");
+  } finally {
+    btn.classList.remove("loading");
+    btn.disabled = false;
+  }
+}
+
+// ---------- Signup ----------
+async function signup(e) {
+  e.preventDefault();
   const username = document.getElementById("signup-username").value.trim();
   const password = document.getElementById("signup-password").value;
-  const confirmPassword = document.getElementById("confirm-password").value;
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-
-  // Validation
+  const confirm = document.getElementById("confirm-password").value;
   if (!username) {
-    showError("signup-error", "Please enter a username");
+    err("signup-error", "Enter a username");
+    return;
+  }
+  if (password.length < 6) {
+    err("signup-error", "Password ≥ 6 chars");
+    return;
+  }
+  if (password !== confirm) {
+    err("signup-error", "Passwords do not match");
     return;
   }
 
-  if (!password || password.length < 6) {
-    showError("signup-error", "Password must be at least 6 characters");
-    return;
-  }
-
-  if (password !== confirmPassword) {
-    showError("signup-error", "Passwords do not match");
-    return;
-  }
-
-  // If currentEmail is not set (username was entered), ask for email
-  if (!currentEmail || !currentEmail.includes("@")) {
-    const email = prompt("Please enter your email address:");
-    if (!email || !email.includes("@")) {
-      showError("signup-error", "Valid email address is required");
+  if (!currentEmail.includes("@")) {
+    const emailPrompt = prompt("Enter your email address:");
+    if (!emailPrompt || !emailPrompt.includes("@")) {
+      err("signup-error", "Valid email required");
       return;
     }
-    currentEmail = email;
+    currentEmail = emailPrompt;
   }
 
-  submitBtn.classList.add("loading");
-  submitBtn.disabled = true;
-
-  try {
-    // Sign up user
-    const { data, error } = await supabaseClient.auth.signUp({
-      email: currentEmail,
-      password: password,
-      options: {
-        data: {
-          username: username,
-        },
-      },
-    });
-
-    if (error) {
-      showError("signup-error", error.message);
-      return;
-    }
-
-    if (data.user) {
-      currentUsername = username;
-      pendingSignup = true;
-
-      // Show OTP verification
-      document.getElementById("otp-email").textContent = currentEmail;
-      showSection("otp");
-    }
-  } catch (error) {
-    console.error("Signup error:", error);
-    showError("signup-error", "Signup failed. Please try again.");
-  } finally {
-    submitBtn.classList.remove("loading");
-    submitBtn.disabled = false;
-  }
-}
-
-// Handle magic link request
-async function handleMagicLinkRequest(e) {
-  e.preventDefault();
-
-  const email = document.getElementById("magic-link-email").value.trim();
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-
-  if (!email) {
-    showError("magic-link-error", "Please enter your email address");
-    return;
-  }
-
-  if (!email.includes("@")) {
-    showError("magic-link-error", "Please enter a valid email address");
-    return;
-  }
-
-  submitBtn.classList.add("loading");
-  submitBtn.disabled = true;
-
-  try {
-    await sendMagicLink(email);
-    pendingMagicLink = email;
-    document.getElementById("magic-sent-email").textContent = email;
-    showSection("magicLinkSent");
-  } catch (error) {
-    showError(
-      "magic-link-error",
-      error.message || "Failed to send magic link. Please try again."
-    );
-  } finally {
-    submitBtn.classList.remove("loading");
-    submitBtn.disabled = false;
-  }
-}
-
-// Send magic link
-async function sendMagicLink(email) {
-  const { error } = await supabaseClient.auth.signInWithOtp({
-    email: email,
-    options: {
-      emailRedirectTo: window.location.origin,
-    },
-  });
-
-  if (error) {
-    throw error;
-  }
-}
-
-// Resend magic link
-async function resendMagicLink() {
-  const btn = document.getElementById("resend-magic-link");
+  const btn = e.target.querySelector("button");
   btn.classList.add("loading");
   btn.disabled = true;
-
   try {
-    await sendMagicLink(pendingMagicLink);
-    // Show success message temporarily
-    const originalText = btn.textContent;
-    btn.textContent = "Magic Link Sent!";
-    setTimeout(() => {
-      btn.textContent = originalText;
-    }, 3000);
-  } catch (error) {
-    showError(
-      "magic-sent-error",
-      "Failed to resend magic link. Please try again."
-    );
+    const { data, error } = await supabase.auth.signUp({
+      email: currentEmail,
+      password,
+      options: { data: { username } },
+    });
+    if (error) {
+      err("signup-error", error.message);
+      return;
+    }
+    if (data.user) {
+      document.getElementById("otp-email").textContent = currentEmail;
+      pendingSignup = true;
+      show("otp");
+    }
+  } catch (err0) {
+    console.error(err0);
+    err("signup-error", "Signup failed, try again.");
   } finally {
     btn.classList.remove("loading");
     btn.disabled = false;
   }
 }
 
-// Handle OTP verification
-async function handleOTPVerification(e) {
+// ---------- Verify OTP ----------
+async function verifyOtp(e) {
   e.preventDefault();
-
-  const otpCode = document.getElementById("otp-code").value.trim();
-  const submitBtn = e.target.querySelector('button[type="submit"]');
-
-  if (!otpCode || otpCode.length !== 6) {
-    showError("otp-error", "Please enter a valid 6-digit code");
+  const code = document.getElementById("otp-code").value.trim();
+  if (code.length !== 6) {
+    err("otp-error", "Enter a 6-digit code");
     return;
   }
 
-  submitBtn.classList.add("loading");
-  submitBtn.disabled = true;
-
+  const btn = e.target.querySelector("button");
+  btn.classList.add("loading");
+  btn.disabled = true;
   try {
-    const { data, error } = await supabaseClient.auth.verifyOtp({
+    const { data, error } = await supabase.auth.verifyOtp({
       email: currentEmail,
-      token: otpCode,
+      token: code,
       type: "email",
     });
-
     if (error) {
-      showError("otp-error", error.message);
+      err("otp-error", error.message);
       return;
     }
-
     if (data.user) {
-      showSection("home");
-      displayUserInfo(data.user);
+      show("home");
+      renderUser(data.user);
     }
-  } catch (error) {
-    console.error("OTP verification error:", error);
-    showError("otp-error", "Verification failed. Please try again.");
+  } catch (err0) {
+    console.error(err0);
+    err("otp-error", "Verification failed.");
   } finally {
-    submitBtn.classList.remove("loading");
-    submitBtn.disabled = false;
+    btn.classList.remove("loading");
+    btn.disabled = false;
   }
 }
 
-// Resend OTP
-async function resendOTP() {
-  const resendBtn = document.getElementById("resend-otp");
-  resendBtn.disabled = true;
-  resendBtn.textContent = "Sending...";
-
+// ---------- Resend OTP ----------
+async function resendOtp() {
+  const link = document.getElementById("resend-otp");
+  link.disabled = true;
+  link.textContent = "Sending…";
   try {
-    const { error } = await supabaseClient.auth.signInWithOtp({
+    const { error } = await supabase.auth.signInWithOtp({
       email: currentEmail,
     });
-
     if (error) {
-      showError("otp-error", "Failed to resend code. Please try again.");
+      err("otp-error", "Couldn’t resend.");
     } else {
-      showError("otp-error", "");
-      // Show success message temporarily
-      const originalText = resendBtn.textContent;
-      resendBtn.textContent = "Code sent!";
-      setTimeout(() => {
-        resendBtn.textContent = "Resend Code";
-      }, 3000);
+      link.textContent = "Code sent!";
+      setTimeout(() => (link.textContent = "Resend Code"), 3000);
     }
-  } catch (error) {
-    console.error("Resend OTP error:", error);
-    showError("otp-error", "Failed to resend code. Please try again.");
   } finally {
-    resendBtn.disabled = false;
-    setTimeout(() => {
-      if (resendBtn.textContent === "Sending...") {
-        resendBtn.textContent = "Resend Code";
-      }
-    }, 2000);
+    link.disabled = false;
   }
 }
 
-// Display user information
-function displayUserInfo(user) {
+// ---------- Dashboard ----------
+function renderUser(user) {
   document.getElementById("user-email").textContent = user.email;
   document.getElementById("user-username").textContent =
     user.user_metadata?.username || "Not set";
@@ -535,40 +294,11 @@ function displayUserInfo(user) {
   ).toLocaleDateString();
 }
 
-// Handle logout
-async function handleLogout() {
-  try {
-    const { error } = await supabaseClient.auth.signOut();
-    if (error) {
-      console.error("Logout error:", error);
-      return;
-    }
-
-    // Reset variables
-    currentEmail = "";
-    currentUsername = "";
-    pendingSignup = false;
-    pendingMagicLink = "";
-
-    // Clear forms
-    document.querySelectorAll("form").forEach((form) => form.reset());
-
-    // Show initial section
-    showSection("checkUser");
-  } catch (error) {
-    console.error("Logout error:", error);
-  }
-}
-
-// Validate password match
-function validatePasswordMatch() {
-  const password = document.getElementById("signup-password").value;
-  const confirmPassword = document.getElementById("confirm-password").value;
-  const errorElement = document.getElementById("signup-error");
-
-  if (confirmPassword && password !== confirmPassword) {
-    errorElement.textContent = "Passwords do not match";
-  } else {
-    errorElement.textContent = "";
-  }
+// ---------- Logout ----------
+async function logout() {
+  await supabase.auth.signOut();
+  currentEmail = currentUsername = "";
+  pendingSignup = false;
+  document.querySelectorAll("form").forEach((f) => f.reset());
+  show("checkUser");
 }
