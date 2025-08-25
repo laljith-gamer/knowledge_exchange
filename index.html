@@ -18,6 +18,10 @@
                     </div>
                     <button type="submit" class="btn-primary">Continue</button>
                 </form>
+                <div class="divider">
+                    <span>or</span>
+                </div>
+                <button id="magic-link-option" class="btn-magic">Continue with Magic Link</button>
                 <div id="check-error" class="error-message"></div>
             </div>
         </div>
@@ -33,6 +37,10 @@
                     </div>
                     <button type="submit" class="btn-primary">Sign In</button>
                 </form>
+                <div class="divider">
+                    <span>or</span>
+                </div>
+                <button id="login-magic-link" class="btn-magic">Send Magic Link</button>
                 <div id="login-error" class="error-message"></div>
                 <button id="back-to-check" class="btn-link">← Back</button>
             </div>
@@ -57,6 +65,37 @@
                 </form>
                 <div id="signup-error" class="error-message"></div>
                 <button id="back-to-check-signup" class="btn-link">← Back</button>
+            </div>
+        </div>
+
+        <!-- Magic Link Section -->
+        <div id="magic-link-section" class="auth-section">
+            <div class="auth-card">
+                <h2>Magic Link Sign In</h2>
+                <p>Enter your email to receive a magic link for instant sign-in</p>
+                <form id="magic-link-form">
+                    <div class="input-group">
+                        <input type="email" id="magic-link-email" placeholder="Enter your email address" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Send Magic Link</button>
+                </form>
+                <div id="magic-link-error" class="error-message"></div>
+                <button id="back-to-check-magic" class="btn-link">← Back</button>
+            </div>
+        </div>
+
+        <!-- Magic Link Sent Section -->
+        <div id="magic-link-sent-section" class="auth-section">
+            <div class="auth-card">
+                <div class="success-icon">📧</div>
+                <h2>Check Your Email</h2>
+                <p>We've sent a magic link to <strong><span id="magic-sent-email"></span></strong></p>
+                <p class="info-text">Click the link in your email to sign in instantly. The link expires in 1 hour.</p>
+                <div class="magic-link-actions">
+                    <button id="resend-magic-link" class="btn-secondary">Resend Magic Link</button>
+                    <button id="back-to-magic-form" class="btn-link">← Try Different Email</button>
+                </div>
+                <div id="magic-sent-error" class="error-message"></div>
             </div>
         </div>
 
