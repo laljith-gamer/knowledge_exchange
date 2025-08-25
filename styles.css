@@ -217,3 +217,77 @@ input[type="password"]:focus {
         padding: 30px 20px;
     }
 }
+/* Add these new styles to your existing styles.css */
+
+.divider {
+    text-align: center;
+    margin: 20px 0;
+    position: relative;
+}
+
+.divider::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: #e1e5e9;
+}
+
+.divider span {
+    background: white;
+    padding: 0 15px;
+    color: #666;
+    font-size: 14px;
+}
+
+.btn-magic {
+    width: 100%;
+    padding: 15px;
+    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    margin-bottom: 15px;
+}
+
+.btn-magic:hover {
+    transform: translateY(-2px);
+}
+
+.btn-magic:active {
+    transform: translateY(0);
+}
+
+.btn-magic:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.success-icon {
+    font-size: 48px;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.info-text {
+    color: #666;
+    font-size: 14px;
+    line-height: 1.5;
+    margin: 15px 0;
+    text-align: center;
+}
+
+.magic-link-actions {
+    margin-top: 25px;
+}
+
+.magic-link-actions .btn-secondary {
+    margin-bottom: 10px;
+}
