@@ -1,224 +1,97 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Knowledge Exchange - Login & Signup</title>
+    <title>Auth System</title>
     <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
-
 <body>
     <div class="container">
-        <!-- Login Form -->
-        <div id="loginForm" class="form-container active">
-            <div class="logo">
-                <h1>Knowledge Exchange</h1>
-            </div>
-            <h2>Welcome Back</h2>
-            <form id="loginFormElement">
-                <div class="input-group">
-                    <label for="loginIdentifier">Username or Email</label>
-                    <input type="text" id="loginIdentifier" required>
-                </div>
-                <div class="input-group">
-                    <label for="loginPassword">Password</label>
-                    <input type="password" id="loginPassword" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Login</button>
-                <p class="forgot-password">
-                    <a href="#" id="showForgotPassword">Forgot Password?</a>
-                </p>
-                <p class="switch-form">
-                    New here? <a href="#" id="showSignup">Sign up</a>
-                </p>
-            </form>
-        </div>
-
-        <!-- Forgot Password Form -->
-        <div id="forgotPasswordForm" class="form-container">
-            <div class="logo">
-                <h1>Knowledge Exchange</h1>
-            </div>
-            <h2>Reset Password</h2>
-            <p class="info-text">Enter your email address and we'll send you a secure link to reset your password</p>
-            <form id="forgotPasswordFormElement">
-                <div class="input-group">
-                    <label for="resetEmail">Email Address</label>
-                    <input type="email" id="resetEmail" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Send Reset Link</button>
-                <p class="switch-form">
-                    Remember your password? <a href="#" id="backToLogin">Login</a>
-                </p>
-            </form>
-        </div>
-
-        <!-- Reset Password Confirmation -->
-        <div id="resetSentForm" class="form-container">
-            <div class="logo">
-                <h1>Knowledge Exchange</h1>
-            </div>
-            <h2>📧 Reset Link Sent</h2>
-            <div class="success-content">
-                <p class="info-text">We've sent a password reset link to your email address. Please check your inbox and
-                    click the link to reset your password.</p>
-                <div class="info-box">
-                    <p><strong>Didn't receive the email?</strong></p>
-                    <ul>
-                        <li>Check your spam/junk folder</li>
-                        <li>Make sure you entered the correct email</li>
-                        <li>Wait a few minutes for delivery</li>
-                    </ul>
-                </div>
-                <button id="backToLoginFromReset" class="btn btn-secondary">Back to Login</button>
-            </div>
-        </div>
-
-        <!-- New Password Form -->
-        <div id="newPasswordForm" class="form-container">
-            <div class="logo">
-                <h1>Knowledge Exchange</h1>
-            </div>
-            <h2>Set New Password</h2>
-            <p class="info-text">Please enter your new password below</p>
-            <form id="newPasswordFormElement">
-                <div class="input-group">
-                    <label for="newPassword">New Password</label>
-                    <input type="password" id="newPassword" required minlength="6">
-                </div>
-                <div class="input-group">
-                    <label for="confirmNewPassword">Confirm New Password</label>
-                    <input type="password" id="confirmNewPassword" required minlength="6">
-                </div>
-                <button type="submit" class="btn btn-primary">Update Password</button>
-            </form>
-        </div>
-
-        <!-- Password Updated Confirmation -->
-        <div id="passwordUpdatedForm" class="form-container">
-            <div class="logo">
-                <h1>Knowledge Exchange</h1>
-            </div>
-            <h2>✅ Password Updated Successfully</h2>
-            <div class="success-content">
-                <p class="info-text">Your password has been successfully updated. You can now login with your new
-                    password.</p>
-                <button id="loginAfterReset" class="btn btn-primary">Login Now</button>
-            </div>
-        </div>
-
-        <!-- Email Verification Form -->
-        <div id="emailForm" class="form-container">
-            <div class="logo">
-                <h1>Knowledge Exchange</h1>
-            </div>
-            <h2>Join Knowledge Exchange</h2>
-            <form id="emailFormElement">
-                <div class="input-group">
-                    <label for="signupEmail">Email Address</label>
-                    <input type="email" id="signupEmail" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Send Verification Code</button>
-                <p class="switch-form">
-                    Already have an account? <a href="#" id="showLogin">Login</a>
-                </p>
-            </form>
-        </div>
-
-        <!-- OTP Verification Form -->
-        <div id="otpForm" class="form-container">
-            <div class="logo">
-                <h1>Knowledge Exchange</h1>
-            </div>
-            <h2>Verify Your Email</h2>
-            <p class="info-text">Enter the 6-digit code sent to <span id="otpEmailDisplay"></span></p>
-            <form id="otpFormElement">
-                <div class="input-group">
-                    <label for="otpCode">Verification Code</label>
-                    <input type="text" id="otpCode" maxlength="6" required>
-                </div>
-                <button type="submit" class="btn btn-primary">Verify Email</button>
-                <button type="button" id="resendOtp" class="btn btn-secondary">Resend Code</button>
-            </form>
-        </div>
-
-        <!-- Profile Setup Form -->
-        <div id="profileForm" class="form-container">
-            <div class="logo">
-                <h1>Knowledge Exchange</h1>
-            </div>
-            <h2>Complete Your Profile</h2>
-            <form id="profileFormElement">
-                <div class="input-group">
-                    <label for="fullName">Full Name</label>
-                    <input type="text" id="fullName" required>
-                </div>
-                <div class="input-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" required>
-                </div>
-                <div class="input-group">
-                    <label for="createPassword">Create Password</label>
-                    <input type="password" id="createPassword" required minlength="6">
-                </div>
-                <div class="input-group">
-                    <label for="confirmPassword">Confirm Password</label>
-                    <input type="password" id="confirmPassword" required minlength="6">
-                </div>
-                <button type="submit" class="btn btn-primary">Create Account</button>
-            </form>
-        </div>
-
-        <!-- Success Message -->
-        <div id="successMessage" class="form-container">
-            <div class="logo">
-                <h1>Knowledge Exchange</h1>
-            </div>
-            <h2>🎉 Welcome to Knowledge Exchange!</h2>
-            <div class="success-content">
-                <p class="info-text">Your account has been created successfully. You're now ready to start your learning
-                    journey!</p>
-                <button id="goToHome" class="btn btn-primary">Enter Dashboard</button>
-            </div>
-        </div>
-
-        <!-- Home Page -->
-        <div id="homePage" class="form-container">
-            <div class="header">
-                <h1>Knowledge Exchange Dashboard</h1>
-                <button id="logout" class="btn btn-logout">Logout</button>
-            </div>
-            <div class="welcome-section">
-                <h2>Welcome back, <span id="userFullName"></span>! 👋</h2>
-                <div class="user-info">
-                    <div class="info-item">
-                        <strong>Username:</strong> <span id="userUsername"></span>
+        <!-- Initial Email/Username Check -->
+        <div id="check-user-section" class="auth-section active">
+            <div class="auth-card">
+                <h2>Welcome</h2>
+                <form id="check-user-form">
+                    <div class="input-group">
+                        <input type="text" id="email-username" placeholder="Enter email or username" required>
                     </div>
-                    <div class="info-item">
-                        <strong>Email:</strong> <span id="userEmail"></span>
-                    </div>
-                </div>
+                    <button type="submit" class="btn-primary">Continue</button>
+                </form>
+                <div id="check-error" class="error-message"></div>
             </div>
         </div>
 
-        <!-- Loading Spinner -->
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p>Processing...</p>
+        <!-- Login Section -->
+        <div id="login-section" class="auth-section">
+            <div class="auth-card">
+                <h2>Welcome Back</h2>
+                <p id="login-email" class="user-info"></p>
+                <form id="login-form">
+                    <div class="input-group">
+                        <input type="password" id="login-password" placeholder="Enter your password" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Sign In</button>
+                </form>
+                <div id="login-error" class="error-message"></div>
+                <button id="back-to-check" class="btn-link">← Back</button>
+            </div>
         </div>
 
-        <!-- Error Message -->
-        <div id="errorMessage" class="error-message">
-            <div class="error-content">
-                <p id="errorText"></p>
-                <button id="closeError" class="btn btn-secondary">Close</button>
+        <!-- Signup Section -->
+        <div id="signup-section" class="auth-section">
+            <div class="auth-card">
+                <h2>Create Account</h2>
+                <p id="signup-email" class="user-info"></p>
+                <form id="signup-form">
+                    <div class="input-group">
+                        <input type="text" id="signup-username" placeholder="Choose a username" required>
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="signup-password" placeholder="Create password" required minlength="6">
+                    </div>
+                    <div class="input-group">
+                        <input type="password" id="confirm-password" placeholder="Confirm password" required minlength="6">
+                    </div>
+                    <button type="submit" class="btn-primary">Create Account</button>
+                </form>
+                <div id="signup-error" class="error-message"></div>
+                <button id="back-to-check-signup" class="btn-link">← Back</button>
+            </div>
+        </div>
+
+        <!-- OTP Verification Section -->
+        <div id="otp-section" class="auth-section">
+            <div class="auth-card">
+                <h2>Verify Email</h2>
+                <p>We've sent a 6-digit code to <span id="otp-email"></span></p>
+                <form id="otp-form">
+                    <div class="input-group">
+                        <input type="text" id="otp-code" placeholder="Enter 6-digit code" maxlength="6" required>
+                    </div>
+                    <button type="submit" class="btn-primary">Verify Code</button>
+                </form>
+                <div id="otp-error" class="error-message"></div>
+                <button id="resend-otp" class="btn-link">Resend Code</button>
+            </div>
+        </div>
+
+        <!-- Home Section -->
+        <div id="home-section" class="auth-section">
+            <div class="auth-card">
+                <h2>Welcome to Dashboard</h2>
+                <div id="user-info">
+                    <p><strong>Email:</strong> <span id="user-email"></span></p>
+                    <p><strong>Username:</strong> <span id="user-username"></span></p>
+                    <p><strong>Member since:</strong> <span id="user-created"></span></p>
+                </div>
+                <button id="logout-btn" class="btn-secondary">Sign Out</button>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+    <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
-
 </html>
