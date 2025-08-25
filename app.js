@@ -1,629 +1,421 @@
-
-// ⚠️ IMPORTANT: Replace these with your ACTUAL Supabase credentials
-const supabaseUrl = "https://lnmrfqiozzmjbrugnpep.supabase.co";
-const supabaseKey =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxubXJmcWlvenptamJydWducGVwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTQyNzg4MjAsImV4cCI6MjA2OTg1NDgyMH0.CUxbI2BWeQv-u0-IEuef7BtgfW98k23Apmj3zayth6k";
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-// State management
-let currentEmail = '';
-let currentUser = null;
-let isPasswordReset = false;
+// Global variables
+let currentEmail = "";
+let currentUsername = "";
+let pendingSignup = false;
 
 // DOM elements
-const forms = {
-    login: document.getElementById('loginForm'),
-    forgotPassword: document.getElementById('forgotPasswordForm'),
-    resetSent: document.getElementById('resetSentForm'),
-    newPassword: document.getElementById('newPasswordForm'),
-    passwordUpdated: document.getElementById('passwordUpdatedForm'),
-    email: document.getElementById('emailForm'),
-    otp: document.getElementById('otpForm'),
-    profile: document.getElementById('profileForm'),
-    success: document.getElementById('successMessage'),
-    home: document.getElementById('homePage')
+const sections = {
+  checkUser: document.getElementById("check-user-section"),
+  login: document.getElementById("login-section"),
+  signup: document.getElementById("signup-section"),
+  otp: document.getElementById("otp-section"),
+  home: document.getElementById("home-section"),
 };
 
-const loading = document.getElementById('loading');
-const errorMessage = document.getElementById('errorMessage');
-const errorText = document.getElementById('errorText');
+// Initialize app
+document.addEventListener("DOMContentLoaded", async () => {
+  await checkAuthState();
+  setupEventListeners();
+});
 
-// Utility functions
-function showForm(formName) {
-    Object.values(forms).forEach(form => form.classList.remove('active'));
-    forms[formName].classList.add('active');
-}
+// Check if user is already logged in
+async function checkAuthState() {
+  try {
+    const {
+      data: { session },
+      error,
+    } = await supabaseClient.auth.getSession();
 
-function showLoading() {
-    loading.classList.add('active');
-}
-
-function hideLoading() {
-    loading.classList.remove('active');
-}
-
-function showError(message) {
-    errorText.textContent = message;
-    errorMessage.classList.add('active');
-}
-
-function hideError() {
-    errorMessage.classList.remove('active');
-}
-
-// Get URL parameters for password reset
-function getUrlParams() {
-    const params = new URLSearchParams(window.location.search);
-    const hash = new URLSearchParams(window.location.hash.substring(1));
-    
-    return {
-        access_token: params.get('access_token') || hash.get('access_token'),
-        refresh_token: params.get('refresh_token') || hash.get('refresh_token'),
-        type: params.get('type') || hash.get('type'),
-        expires_in: params.get('expires_in') || hash.get('expires_in')
-    };
-}
-
-// Check if user is already logged in or handling password reset
-async function checkAuth() {
-    try {
-        const urlParams = getUrlParams();
-        
-        // Check if this is a password reset callback
-        if (urlParams.type === 'recovery' && urlParams.access_token) {
-            console.log('🔄 Password reset detected');
-            isPasswordReset = true;
-            
-            // Set the session from URL parameters
-            const { data, error } = await supabase.auth.setSession({
-                access_token: urlParams.access_token,
-                refresh_token: urlParams.refresh_token
-            });
-            
-            if (error) {
-                console.error('❌ Reset session error:', error);
-                showError('Invalid or expired reset link. Please request a new one.');
-                showForm('login');
-                return;
-            }
-            
-            console.log('✅ Reset session established');
-            
-            // Clear URL parameters
-            window.history.replaceState({}, document.title, window.location.pathname);
-            
-            // Show new password form
-            showForm('newPassword');
-            return;
-        }
-        
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user && !isPasswordReset) {
-            await loadUserProfile(user);
-            showForm('home');
-        }
-    } catch (error) {
-        console.error('Auth check error:', error);
-        showError('Authentication error. Please check your internet connection.');
-    }
-}
-
-// Load user profile data
-async function loadUserProfile(user) {
-    try {
-        const { data: profile, error } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', user.id)
-            .single();
-
-        if (error) {
-            console.error('Profile load error:', error);
-            return;
-        }
-
-        if (profile) {
-            document.getElementById('userFullName').textContent = profile.full_name;
-            document.getElementById('userUsername').textContent = profile.username;
-            document.getElementById('userEmail').textContent = profile.email;
-            currentUser = { ...user, profile };
-        }
-    } catch (error) {
-        console.error('Profile load error:', error);
-    }
-}
-
-// Login functionality
-async function handleLogin(event) {
-    event.preventDefault();
-    showLoading();
-
-    const identifier = document.getElementById('loginIdentifier').value.trim();
-    const password = document.getElementById('loginPassword').value;
-
-    if (!identifier || !password) {
-        showError('Please fill in all fields');
-        hideLoading();
-        return;
+    if (error) {
+      console.error("Session error:", error);
+      return;
     }
 
-    try {
-        // Try to sign in with email first
-        let { data, error } = await supabase.auth.signInWithPassword({
-            email: identifier,
-            password: password
-        });
-
-        // If email login fails, try to find user by username
-        if (error && error.message.includes('Invalid login credentials')) {
-            const { data: profile } = await supabase
-                .from('profiles')
-                .select('email')
-                .eq('username', identifier)
-                .single();
-
-            if (profile) {
-                const result = await supabase.auth.signInWithPassword({
-                    email: profile.email,
-                    password: password
-                });
-                data = result.data;
-                error = result.error;
-            }
-        }
-
-        if (error) throw error;
-
-        await loadUserProfile(data.user);
-        showForm('home');
-    } catch (error) {
-        showError('Invalid login credentials. Please check your username/email and password.');
-    } finally {
-        hideLoading();
+    if (session && session.user) {
+      showSection("home");
+      displayUserInfo(session.user);
+    } else {
+      showSection("checkUser");
     }
+  } catch (error) {
+    console.error("Auth check error:", error);
+    showSection("checkUser");
+  }
 }
 
-// ✅ CORRECTED: Forgot password functionality
-async function handleForgotPassword(event) {
-    event.preventDefault();
-    showLoading();
+// Setup event listeners
+function setupEventListeners() {
+  // Check user form
+  document
+    .getElementById("check-user-form")
+    .addEventListener("submit", handleCheckUser);
 
-    const email = document.getElementById('resetEmail').value.trim();
+  // Login form
+  document.getElementById("login-form").addEventListener("submit", handleLogin);
+  document
+    .getElementById("back-to-check")
+    .addEventListener("click", () => showSection("checkUser"));
 
-    if (!email) {
-        showError('Please enter your email address');
-        hideLoading();
-        return;
-    }
+  // Signup form
+  document
+    .getElementById("signup-form")
+    .addEventListener("submit", handleSignup);
+  document
+    .getElementById("back-to-check-signup")
+    .addEventListener("click", () => showSection("checkUser"));
 
-    try {
-        console.log('🔄 Sending password reset to:', email);
-        
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: 'https://knowledge-exchange-eight.vercel.app'
-        });
+  // OTP form
+  document
+    .getElementById("otp-form")
+    .addEventListener("submit", handleOTPVerification);
+  document.getElementById("resend-otp").addEventListener("click", resendOTP);
 
-        if (error) {
-            console.error('❌ Reset email error:', error);
-            throw error;
-        }
+  // Logout
+  document.getElementById("logout-btn").addEventListener("click", handleLogout);
 
-        console.log('✅ Reset email sent successfully');
-        currentEmail = email;
-        showForm('resetSent');
-    } catch (error) {
-        console.error('Password reset error:', error);
-        showError('Error sending reset email. Please check your email address and try again.');
-    } finally {
-        hideLoading();
-    }
+  // Auto-format OTP input
+  document.getElementById("otp-code").addEventListener("input", (e) => {
+    e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6);
+  });
+
+  // Password confirmation validation
+  document
+    .getElementById("confirm-password")
+    .addEventListener("input", validatePasswordMatch);
 }
 
-// Handle new password setting
-async function handleNewPassword(event) {
-    event.preventDefault();
-    showLoading();
+// Show specific section
+function showSection(sectionName) {
+  Object.values(sections).forEach((section) => {
+    section.classList.remove("active");
+  });
+  sections[sectionName].classList.add("active");
 
-    const newPassword = document.getElementById('newPassword').value;
-    const confirmNewPassword = document.getElementById('confirmNewPassword').value;
-
-    if (!newPassword || !confirmNewPassword) {
-        showError('Please fill in both password fields');
-        hideLoading();
-        return;
-    }
-
-    if (newPassword !== confirmNewPassword) {
-        showError('Passwords do not match');
-        hideLoading();
-        return;
-    }
-
-    if (newPassword.length < 6) {
-        showError('Password must be at least 6 characters long');
-        hideLoading();
-        return;
-    }
-
-    try {
-        console.log('🔄 Updating password...');
-        
-        const { error } = await supabase.auth.updateUser({
-            password: newPassword
-        });
-
-        if (error) {
-            console.error('❌ Password update error:', error);
-            throw error;
-        }
-
-        console.log('✅ Password updated successfully');
-        isPasswordReset = false;
-        showForm('passwordUpdated');
-    } catch (error) {
-        console.error('Password update error:', error);
-        showError('Error updating password. Please try the reset process again.');
-    } finally {
-        hideLoading();
-    }
+  // Clear error messages
+  clearErrors();
 }
 
-// Email signup
-async function handleEmailSignup(event) {
-    event.preventDefault();
-    showLoading();
+// Clear all error messages
+function clearErrors() {
+  document
+    .querySelectorAll(".error-message")
+    .forEach((el) => (el.textContent = ""));
+}
 
-    const email = document.getElementById('signupEmail').value.trim();
+// Show error message
+function showError(elementId, message) {
+  document.getElementById(elementId).textContent = message;
+}
+
+// Check if user exists
+async function handleCheckUser(e) {
+  e.preventDefault();
+
+  const emailUsername = document.getElementById("email-username").value.trim();
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+
+  if (!emailUsername) {
+    showError("check-error", "Please enter email or username");
+    return;
+  }
+
+  submitBtn.classList.add("loading");
+  submitBtn.disabled = true;
+
+  try {
+    const isEmail = emailUsername.includes("@");
+    let userExists = false;
+    let userEmail = "";
+
+    if (isEmail) {
+      // Check if email exists by attempting to sign in with a dummy password
+      const { error } = await supabaseClient.auth.signInWithPassword({
+        email: emailUsername,
+        password: "dummy-password-check",
+      });
+
+      // If error is not "Invalid login credentials", user exists
+      userExists = error && error.message !== "Invalid login credentials";
+      userEmail = emailUsername;
+    } else {
+      // Search for username in user metadata
+      // Note: This requires RLS policies to be set up properly
+      const { data, error } = await supabaseClient.rpc("get_user_by_username", {
+        username_input: emailUsername,
+      });
+
+      if (!error && data && data.length > 0) {
+        userExists = true;
+        userEmail = data[0].email;
+      } else {
+        userExists = false;
+        userEmail = ""; // We'll need to ask for email in signup
+      }
+    }
+
+    currentEmail = userEmail || emailUsername;
+    currentUsername = !isEmail ? emailUsername : "";
+
+    if (userExists && userEmail) {
+      // User exists, show login
+      document.getElementById(
+        "login-email"
+      ).textContent = `Welcome back! Please enter your password for ${userEmail}`;
+      showSection("login");
+    } else {
+      // New user, show signup
+      if (isEmail) {
+        document.getElementById(
+          "signup-email"
+        ).textContent = `Create account for ${emailUsername}`;
+        currentEmail = emailUsername;
+      } else {
+        document.getElementById(
+          "signup-email"
+        ).textContent = `Create account with username: ${emailUsername}`;
+        currentUsername = emailUsername;
+        // We'll need to ask for email in the signup form
+      }
+      showSection("signup");
+    }
+  } catch (error) {
+    console.error("Check user error:", error);
+    showError("check-error", "Something went wrong. Please try again.");
+  } finally {
+    submitBtn.classList.remove("loading");
+    submitBtn.disabled = false;
+  }
+}
+
+// Handle login
+async function handleLogin(e) {
+  e.preventDefault();
+
+  const password = document.getElementById("login-password").value;
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+
+  if (!password) {
+    showError("login-error", "Please enter your password");
+    return;
+  }
+
+  submitBtn.classList.add("loading");
+  submitBtn.disabled = true;
+
+  try {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: currentEmail,
+      password: password,
+    });
+
+    if (error) {
+      showError("login-error", error.message);
+      return;
+    }
+
+    if (data.user) {
+      showSection("home");
+      displayUserInfo(data.user);
+    }
+  } catch (error) {
+    console.error("Login error:", error);
+    showError("login-error", "Login failed. Please try again.");
+  } finally {
+    submitBtn.classList.remove("loading");
+    submitBtn.disabled = false;
+  }
+}
+
+// Handle signup
+async function handleSignup(e) {
+  e.preventDefault();
+
+  const username = document.getElementById("signup-username").value.trim();
+  const password = document.getElementById("signup-password").value;
+  const confirmPassword = document.getElementById("confirm-password").value;
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+
+  // Validation
+  if (!username) {
+    showError("signup-error", "Please enter a username");
+    return;
+  }
+
+  if (!password || password.length < 6) {
+    showError("signup-error", "Password must be at least 6 characters");
+    return;
+  }
+
+  if (password !== confirmPassword) {
+    showError("signup-error", "Passwords do not match");
+    return;
+  }
+
+  // If currentEmail is not set (username was entered), ask for email
+  if (!currentEmail || !currentEmail.includes("@")) {
+    const email = prompt("Please enter your email address:");
+    if (!email || !email.includes("@")) {
+      showError("signup-error", "Valid email address is required");
+      return;
+    }
     currentEmail = email;
+  }
 
-    if (!email) {
-        showError('Please enter your email address');
-        hideLoading();
-        return;
+  submitBtn.classList.add("loading");
+  submitBtn.disabled = true;
+
+  try {
+    // Sign up user
+    const { data, error } = await supabaseClient.auth.signUp({
+      email: currentEmail,
+      password: password,
+      options: {
+        data: {
+          username: username,
+        },
+      },
+    });
+
+    if (error) {
+      showError("signup-error", error.message);
+      return;
     }
 
-    try {
-        const { error } = await supabase.auth.signInWithOtp({
-            email: email,
-            options: {
-                shouldCreateUser: true
-            }
-        });
+    if (data.user) {
+      currentUsername = username;
+      pendingSignup = true;
 
-        if (error) throw error;
-
-        // Display email in OTP form
-        document.getElementById('otpEmailDisplay').textContent = email;
-        showForm('otp');
-    } catch (error) {
-        showError('Error sending verification code. Please try again.');
-    } finally {
-        hideLoading();
+      // Show OTP verification
+      document.getElementById("otp-email").textContent = currentEmail;
+      showSection("otp");
     }
+  } catch (error) {
+    console.error("Signup error:", error);
+    showError("signup-error", "Signup failed. Please try again.");
+  } finally {
+    submitBtn.classList.remove("loading");
+    submitBtn.disabled = false;
+  }
 }
 
-// OTP verification
-async function handleOtpVerification(event) {
-    event.preventDefault();
-    showLoading();
+// Handle OTP verification
+async function handleOTPVerification(e) {
+  e.preventDefault();
 
-    const otpCode = document.getElementById('otpCode').value;
+  const otpCode = document.getElementById("otp-code").value.trim();
+  const submitBtn = e.target.querySelector('button[type="submit"]');
 
-    if (!otpCode || otpCode.length !== 6) {
-        showError('Please enter the 6-digit verification code');
-        hideLoading();
-        return;
+  if (!otpCode || otpCode.length !== 6) {
+    showError("otp-error", "Please enter a valid 6-digit code");
+    return;
+  }
+
+  submitBtn.classList.add("loading");
+  submitBtn.disabled = true;
+
+  try {
+    const { data, error } = await supabaseClient.auth.verifyOtp({
+      email: currentEmail,
+      token: otpCode,
+      type: "email",
+    });
+
+    if (error) {
+      showError("otp-error", error.message);
+      return;
     }
 
-    try {
-        const { data, error } = await supabase.auth.verifyOtp({
-            email: currentEmail,
-            token: otpCode,
-            type: 'email'
-        });
-
-        if (error) throw error;
-
-        // Check if profile already exists
-        const { data: existingProfile } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', data.user.id)
-            .single();
-
-        if (existingProfile) {
-            // User already has a profile, go to home
-            await loadUserProfile(data.user);
-            showForm('home');
-        } else {
-            // New user, show profile setup
-            currentUser = data.user;
-            showForm('profile');
-        }
-    } catch (error) {
-        showError('Invalid verification code. Please try again.');
-    } finally {
-        hideLoading();
+    if (data.user) {
+      showSection("home");
+      displayUserInfo(data.user);
     }
-}
-
-// Profile setup
-async function handleProfileSetup(event) {
-    event.preventDefault();
-    showLoading();
-
-    const username = document.getElementById('username').value.trim();
-    const fullName = document.getElementById('fullName').value.trim();
-    const password = document.getElementById('createPassword').value;
-    const confirmPassword = document.getElementById('confirmPassword').value;
-
-    if (!username || !fullName || !password || !confirmPassword) {
-        showError('Please fill in all fields');
-        hideLoading();
-        return;
-    }
-
-    if (password !== confirmPassword) {
-        showError('Passwords do not match');
-        hideLoading();
-        return;
-    }
-
-    if (password.length < 6) {
-        showError('Password must be at least 6 characters long');
-        hideLoading();
-        return;
-    }
-
-    try {
-        // Check if username is already taken
-        const { data: existingUsername } = await supabase
-            .from('profiles')
-            .select('username')
-            .eq('username', username)
-            .single();
-
-        if (existingUsername) {
-            throw new Error('Username is already taken');
-        }
-
-        // Update user password
-        const { error: passwordError } = await supabase.auth.updateUser({
-            password: password
-        });
-
-        if (passwordError) throw passwordError;
-
-        // Create profile
-        const { error: profileError } = await supabase
-            .from('profiles')
-            .insert([
-                {
-                    id: currentUser.id,
-                    full_name: fullName,
-                    username: username,
-                    email: currentEmail
-                }
-            ]);
-
-        if (profileError) throw profileError;
-
-        showForm('success');
-    } catch (error) {
-        showError(error.message);
-    } finally {
-        hideLoading();
-    }
+  } catch (error) {
+    console.error("OTP verification error:", error);
+    showError("otp-error", "Verification failed. Please try again.");
+  } finally {
+    submitBtn.classList.remove("loading");
+    submitBtn.disabled = false;
+  }
 }
 
 // Resend OTP
-async function handleResendOtp() {
-    showLoading();
+async function resendOTP() {
+  const resendBtn = document.getElementById("resend-otp");
+  resendBtn.disabled = true;
+  resendBtn.textContent = "Sending...";
 
-    try {
-        const { error } = await supabase.auth.signInWithOtp({
-            email: currentEmail,
-            options: {
-                shouldCreateUser: true
-            }
-        });
+  try {
+    const { error } = await supabaseClient.auth.signInWithOtp({
+      email: currentEmail,
+    });
 
-        if (error) throw error;
-
-        showError('Verification code sent successfully!');
-    } catch (error) {
-        showError('Error resending code. Please try again.');
-    } finally {
-        hideLoading();
+    if (error) {
+      showError("otp-error", "Failed to resend code. Please try again.");
+    } else {
+      showError("otp-error", ""); // Clear error
+      // Show success message temporarily
+      const originalText = resendBtn.textContent;
+      resendBtn.textContent = "Code sent!";
+      setTimeout(() => {
+        resendBtn.textContent = "Resend Code";
+      }, 3000);
     }
+  } catch (error) {
+    console.error("Resend OTP error:", error);
+    showError("otp-error", "Failed to resend code. Please try again.");
+  } finally {
+    resendBtn.disabled = false;
+    setTimeout(() => {
+      if (resendBtn.textContent === "Sending...") {
+        resendBtn.textContent = "Resend Code";
+      }
+    }, 2000);
+  }
 }
 
-// Go to home page
-async function goToHome() {
-    try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-            await loadUserProfile(user);
-            showForm('home');
-        }
-    } catch (error) {
-        showError('Error loading profile. Please try again.');
-    }
+// Display user information
+function displayUserInfo(user) {
+  document.getElementById("user-email").textContent = user.email;
+  document.getElementById("user-username").textContent =
+    user.user_metadata?.username || "Not set";
+  document.getElementById("user-created").textContent = new Date(
+    user.created_at
+  ).toLocaleDateString();
 }
 
-// Logout
+// Handle logout
 async function handleLogout() {
-    try {
-        await supabase.auth.signOut();
-        currentUser = null;
-        currentEmail = '';
-        isPasswordReset = false;
-        
-        // Clear form data
-        document.querySelectorAll('input').forEach(input => input.value = '');
-        
-        showForm('login');
-    } catch (error) {
-        showError('Error logging out. Please try again.');
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+    if (error) {
+      console.error("Logout error:", error);
+      return;
     }
+
+    // Reset variables
+    currentEmail = "";
+    currentUsername = "";
+    pendingSignup = false;
+
+    // Clear forms
+    document.querySelectorAll("form").forEach((form) => form.reset());
+
+    // Show initial section
+    showSection("checkUser");
+  } catch (error) {
+    console.error("Logout error:", error);
+  }
 }
 
-// Password strength checker
-function checkPasswordStrength(password) {
-    let strength = 0;
-    
-    if (password.length >= 8) strength++;
-    if (/[a-z]/.test(password)) strength++;
-    if (/[A-Z]/.test(password)) strength++;
-    if (/[0-9]/.test(password)) strength++;
-    if (/[^A-Za-z0-9]/.test(password)) strength++;
-    
-    if (strength < 2) return 'weak';
-    if (strength < 4) return 'medium';
-    return 'strong';
+// Validate password match
+function validatePasswordMatch() {
+  const password = document.getElementById("signup-password").value;
+  const confirmPassword = document.getElementById("confirm-password").value;
+  const errorElement = document.getElementById("signup-error");
+
+  if (confirmPassword && password !== confirmPassword) {
+    errorElement.textContent = "Passwords do not match";
+  } else {
+    errorElement.textContent = "";
+  }
 }
-
-// Event listeners
-document.addEventListener('DOMContentLoaded', function() {
-    // Check authentication on page load
-    checkAuth();
-
-    // Form submissions
-    document.getElementById('loginFormElement').addEventListener('submit', handleLogin);
-    document.getElementById('forgotPasswordFormElement').addEventListener('submit', handleForgotPassword);
-    document.getElementById('newPasswordFormElement').addEventListener('submit', handleNewPassword);
-    document.getElementById('emailFormElement').addEventListener('submit', handleEmailSignup);
-    document.getElementById('otpFormElement').addEventListener('submit', handleOtpVerification);
-    document.getElementById('profileFormElement').addEventListener('submit', handleProfileSetup);
-
-    // Navigation buttons
-    document.getElementById('showSignup').addEventListener('click', (e) => {
-        e.preventDefault();
-        showForm('email');
-    });
-
-    document.getElementById('showLogin').addEventListener('click', (e) => {
-        e.preventDefault();
-        showForm('login');
-    });
-
-    document.getElementById('showForgotPassword').addEventListener('click', (e) => {
-        e.preventDefault();
-        showForm('forgotPassword');
-    });
-
-    document.getElementById('backToLogin').addEventListener('click', (e) => {
-        e.preventDefault();
-        showForm('login');
-    });
-
-    document.getElementById('backToLoginFromReset').addEventListener('click', () => {
-        showForm('login');
-    });
-
-    document.getElementById('loginAfterReset').addEventListener('click', () => {
-        showForm('login');
-    });
-
-    // Other buttons
-    document.getElementById('resendOtp').addEventListener('click', handleResendOtp);
-    document.getElementById('goToHome').addEventListener('click', goToHome);
-    document.getElementById('logout').addEventListener('click', handleLogout);
-    document.getElementById('closeError').addEventListener('click', hideError);
-
-    // Real-time validation
-    document.getElementById('confirmPassword').addEventListener('input', function() {
-        const password = document.getElementById('createPassword').value;
-        const confirmPassword = this.value;
-        
-        if (password && confirmPassword && password !== confirmPassword) {
-            this.style.borderColor = '#dc3545';
-        } else {
-            this.style.borderColor = '#e1e5e9';
-        }
-    });
-
-    document.getElementById('confirmNewPassword').addEventListener('input', function() {
-        const password = document.getElementById('newPassword').value;
-        const confirmPassword = this.value;
-        
-        if (password && confirmPassword && password !== confirmPassword) {
-            this.style.borderColor = '#dc3545';
-        } else {
-            this.style.borderColor = '#e1e5e9';
-        }
-    });
-
-    // Username availability check
-    document.getElementById('username').addEventListener('blur', async function() {
-        const username = this.value.trim();
-        if (username.length > 0) {
-            try {
-                const { data } = await supabase
-                    .from('profiles')
-                    .select('username')
-                    .eq('username', username)
-                    .single();
-
-                if (data) {
-                    this.style.borderColor = '#dc3545';
-                } else {
-                    this.style.borderColor = '#28a745';
-                }
-            } catch (error) {
-                // Username is available
-                this.style.borderColor = '#28a745';
-            }
-        }
-    });
-
-    // OTP input formatting
-    document.getElementById('otpCode').addEventListener('input', function() {
-        this.value = this.value.replace(/\D/g, '').substring(0, 6);
-        
-        // Auto-submit when 6 digits entered
-        if (this.value.length === 6) {
-            setTimeout(() => {
-                document.getElementById('otpFormElement').dispatchEvent(new Event('submit'));
-            }, 100);
-        }
-    });
-
-    // Password strength indicators
-    ['createPassword', 'newPassword'].forEach(passwordFieldId => {
-        const field = document.getElementById(passwordFieldId);
-        if (field) {
-            field.addEventListener('input', function() {
-                const strength = checkPasswordStrength(this.value);
-                
-                // Remove existing indicator
-                const existingIndicator = this.parentNode.querySelector('.password-strength');
-                if (existingIndicator) {
-                    existingIndicator.remove();
-                }
-                
-                // Add new indicator
-                if (this.value.length > 0) {
-                    const indicator = document.createElement('div');
-                    indicator.className = `password-strength ${strength}`;
-                    indicator.textContent = `Password strength: ${strength}`;
-                    this.parentNode.appendChild(indicator);
-                }
-            });
-        }
-    });
-});
-
-// Listen for auth state changes
-supabase.auth.onAuthStateChange((event, session) => {
-    console.log('Auth state changed:', event, session);
-    
-    if (event === 'SIGNED_IN' && session && !isPasswordReset) {
-        console.log('User signed in:', session.user);
-    } else if (event === 'SIGNED_OUT') {
-        console.log('User signed out');
-        if (!isPasswordReset) {
-            showForm('login');
-        }
-    }
-});
