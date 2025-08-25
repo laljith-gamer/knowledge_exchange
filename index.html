@@ -1,136 +1,130 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Auth System</title>
-    <link rel="stylesheet" href="styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Auth System</title>
+  <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-    <div class="container">
-        <!-- Initial Email/Username Check -->
-        <div id="check-user-section" class="auth-section active">
-            <div class="auth-card">
-                <h2>Welcome</h2>
-                <form id="check-user-form">
-                    <div class="input-group">
-                        <input type="text" id="email-username" placeholder="Enter email or username" required>
-                    </div>
-                    <button type="submit" class="btn-primary">Continue</button>
-                </form>
-                <div class="divider">
-                    <span>or</span>
-                </div>
-                <button id="magic-link-option" class="btn-magic">Continue with Magic Link</button>
-                <div id="check-error" class="error-message"></div>
-            </div>
-        </div>
-
-        <!-- Login Section -->
-        <div id="login-section" class="auth-section">
-            <div class="auth-card">
-                <h2>Welcome Back</h2>
-                <p id="login-email" class="user-info"></p>
-                <form id="login-form">
-                    <div class="input-group">
-                        <input type="password" id="login-password" placeholder="Enter your password" required>
-                    </div>
-                    <button type="submit" class="btn-primary">Sign In</button>
-                </form>
-                <div class="divider">
-                    <span>or</span>
-                </div>
-                <button id="login-magic-link" class="btn-magic">Send Magic Link</button>
-                <div id="login-error" class="error-message"></div>
-                <button id="back-to-check" class="btn-link">← Back</button>
-            </div>
-        </div>
-
-        <!-- Signup Section -->
-        <div id="signup-section" class="auth-section">
-            <div class="auth-card">
-                <h2>Create Account</h2>
-                <p id="signup-email" class="user-info"></p>
-                <form id="signup-form">
-                    <div class="input-group">
-                        <input type="text" id="signup-username" placeholder="Choose a username" required>
-                    </div>
-                    <div class="input-group">
-                        <input type="password" id="signup-password" placeholder="Create password" required minlength="6">
-                    </div>
-                    <div class="input-group">
-                        <input type="password" id="confirm-password" placeholder="Confirm password" required minlength="6">
-                    </div>
-                    <button type="submit" class="btn-primary">Create Account</button>
-                </form>
-                <div id="signup-error" class="error-message"></div>
-                <button id="back-to-check-signup" class="btn-link">← Back</button>
-            </div>
-        </div>
-
-        <!-- Magic Link Section -->
-        <div id="magic-link-section" class="auth-section">
-            <div class="auth-card">
-                <h2>Magic Link Sign In</h2>
-                <p>Enter your email to receive a magic link for instant sign-in</p>
-                <form id="magic-link-form">
-                    <div class="input-group">
-                        <input type="email" id="magic-link-email" placeholder="Enter your email address" required>
-                    </div>
-                    <button type="submit" class="btn-primary">Send Magic Link</button>
-                </form>
-                <div id="magic-link-error" class="error-message"></div>
-                <button id="back-to-check-magic" class="btn-link">← Back</button>
-            </div>
-        </div>
-
-        <!-- Magic Link Sent Section -->
-        <div id="magic-link-sent-section" class="auth-section">
-            <div class="auth-card">
-                <div class="success-icon">📧</div>
-                <h2>Check Your Email</h2>
-                <p>We've sent a magic link to <strong><span id="magic-sent-email"></span></strong></p>
-                <p class="info-text">Click the link in your email to sign in instantly. The link expires in 1 hour.</p>
-                <div class="magic-link-actions">
-                    <button id="resend-magic-link" class="btn-secondary">Resend Magic Link</button>
-                    <button id="back-to-magic-form" class="btn-link">← Try Different Email</button>
-                </div>
-                <div id="magic-sent-error" class="error-message"></div>
-            </div>
-        </div>
-
-        <!-- OTP Verification Section -->
-        <div id="otp-section" class="auth-section">
-            <div class="auth-card">
-                <h2>Verify Email</h2>
-                <p>We've sent a 6-digit code to <span id="otp-email"></span></p>
-                <form id="otp-form">
-                    <div class="input-group">
-                        <input type="text" id="otp-code" placeholder="Enter 6-digit code" maxlength="6" required>
-                    </div>
-                    <button type="submit" class="btn-primary">Verify Code</button>
-                </form>
-                <div id="otp-error" class="error-message"></div>
-                <button id="resend-otp" class="btn-link">Resend Code</button>
-            </div>
-        </div>
-
-        <!-- Home Section -->
-        <div id="home-section" class="auth-section">
-            <div class="auth-card">
-                <h2>Welcome to Dashboard</h2>
-                <div id="user-info">
-                    <p><strong>Email:</strong> <span id="user-email"></span></p>
-                    <p><strong>Username:</strong> <span id="user-username"></span></p>
-                    <p><strong>Member since:</strong> <span id="user-created"></span></p>
-                </div>
-                <button id="logout-btn" class="btn-secondary">Sign Out</button>
-            </div>
-        </div>
+  <div class="container">
+    <!-- Ask for email / username -->
+    <div id="check-user-section" class="auth-section active">
+      <div class="auth-card">
+        <h2>Welcome</h2>
+        <form id="check-user-form">
+          <div class="input-group">
+            <input
+              type="text"
+              id="email-username"
+              placeholder="Enter email or username"
+              required
+            />
+          </div>
+          <button type="submit" class="btn-primary">Continue</button>
+        </form>
+        <div id="check-error" class="error-message"></div>
+      </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
-    <script src="config.js"></script>
-    <script src="app.js"></script>
+    <!-- Login -->
+    <div id="login-section" class="auth-section">
+      <div class="auth-card">
+        <h2>Welcome Back</h2>
+        <p id="login-email" class="user-info"></p>
+        <form id="login-form">
+          <div class="input-group">
+            <input
+              type="password"
+              id="login-password"
+              placeholder="Enter your password"
+              required
+            />
+          </div>
+          <button type="submit" class="btn-primary">Sign In</button>
+        </form>
+        <div id="login-error" class="error-message"></div>
+        <button id="back-to-check" class="btn-link">← Back</button>
+      </div>
+    </div>
+
+    <!-- Signup -->
+    <div id="signup-section" class="auth-section">
+      <div class="auth-card">
+        <h2>Create Account</h2>
+        <p id="signup-email" class="user-info"></p>
+        <form id="signup-form">
+          <div class="input-group">
+            <input
+              type="text"
+              id="signup-username"
+              placeholder="Choose a username"
+              required
+            />
+          </div>
+          <div class="input-group">
+            <input
+              type="password"
+              id="signup-password"
+              placeholder="Create password"
+              required
+              minlength="6"
+            />
+          </div>
+          <div class="input-group">
+            <input
+              type="password"
+              id="confirm-password"
+              placeholder="Confirm password"
+              required
+              minlength="6"
+            />
+          </div>
+          <button type="submit" class="btn-primary">Create Account</button>
+        </form>
+        <div id="signup-error" class="error-message"></div>
+        <button id="back-to-check-signup" class="btn-link">← Back</button>
+      </div>
+    </div>
+
+    <!-- OTP -->
+    <div id="otp-section" class="auth-section">
+      <div class="auth-card">
+        <h2>Verify Email</h2>
+        <p>We've sent a 6-digit code to <span id="otp-email"></span></p>
+        <form id="otp-form">
+          <div class="input-group">
+            <input
+              type="text"
+              id="otp-code"
+              placeholder="Enter 6-digit code"
+              maxlength="6"
+              required
+            />
+          </div>
+          <button type="submit" class="btn-primary">Verify Code</button>
+        </form>
+        <div id="otp-error" class="error-message"></div>
+        <button id="resend-otp" class="btn-link">Resend Code</button>
+      </div>
+    </div>
+
+    <!-- Home -->
+    <div id="home-section" class="auth-section">
+      <div class="auth-card">
+        <h2>Welcome to Dashboard</h2>
+        <div id="user-info">
+          <p><strong>Email:</strong> <span id="user-email"></span></p>
+          <p><strong>Username:</strong> <span id="user-username"></span></p>
+          <p><strong>Member since:</strong> <span id="user-created"></span></p>
+        </div>
+        <button id="logout-btn" class="btn-secondary">Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
