@@ -1,31 +1,24 @@
-/**********************************
- *  app.js  –  Supabase OTP auth  *
- **********************************/
-
-// ---------- Supabase client ----------
-const sb = window.supabaseClient; // created in config.js
-
-// ---------- Global state ----------
-let rawId = ""; // original input (email or username)
-let email = ""; // resolved email
-let username = ""; // username (if provided)
-
-// ---------- Shorthand ----------
+const sb = window.supabaseClient; // from config.js
+/* ---------- globals ---------- */
+let rawId = ""; // original input
+let email = ""; // final e-mail
+let username = ""; // username if provided
+/* ---------- dom helpers ---------- */
 const $ = (id) => document.getElementById(id);
-const err = (id, msg) => {
-  $(id).textContent = msg || "";
-};
-
-// ---------- Panel control ----------
-function show(panel) {
+const err = (id, m) => ($(id).textContent = m || "");
+const show = (p) => {
   document
     .querySelectorAll(".panel")
-    .forEach((p) => p.classList.remove("active"));
-  $(panel).classList.add("active");
-  document.querySelectorAll(".msg-err").forEach((e) => (e.textContent = ""));
-}
+    .forEach((x) => x.classList.remove("active"));
+  $(p).classList.add("active");
+  document.querySelectorAll(".msg-err").forEach((x) => (x.textContent = ""));
+};
+const setLoading = (btn, on) => {
+  btn.classList.toggle("loading", on);
+  btn.disabled = on;
+};
 
-// ---------- Initial load ----------
+/* ---------- boot ---------- */
 document.addEventListener("DOMContentLoaded", async () => {
   const {
     data: { session },
@@ -33,63 +26,52 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (session?.user) {
     renderUser(session.user);
     show("home");
-  } else {
-    show("check-user");
-  }
-  bindEvents();
+  } else show("check-user");
+  bind();
 });
-
-// ---------- Event bindings ----------
-function bindEvents() {
-  $("check-user-form").onsubmit = handleCheckUser;
-  $("login-form").onsubmit = handleLogin;
-  $("signup-form").onsubmit = handleSignup;
-  $("otp-form").onsubmit = handleVerifyOtp;
-  $("otp-resend").onclick = handleResendOtp;
-  $("logout").onclick = handleLogout;
-
+/* ---------- events ---------- */
+function bind() {
+  $("check-user-form").onsubmit = checkUser;
+  $("login-form").onsubmit = login;
+  $("signup-form").onsubmit = signup;
+  $("otp-form").onsubmit = verifyOtp;
+  $("otp-resend").onclick = resendOtp;
+  $("logout").onclick = logout;
   $("back-login").onclick = () => show("check-user");
   $("back-signup").onclick = () => show("check-user");
-
-  $("su-pwd2").oninput = matchPasswords;
-  $("otp-code").oninput = (e) => {
-    e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6);
-  };
+  $("su-pwd2").oninput = matchPwds;
+  $("otp-code").oninput = (e) =>
+    (e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6));
 }
-
-// ---------- 1. Identify user ----------
-async function handleCheckUser(e) {
+/* ---------- 1. decide login vs signup ---------- */
+async function checkUser(e) {
   e.preventDefault();
-  const field = $("id-field");
-  rawId = field.value.trim();
+  rawId = $("id-field").value.trim();
   if (!rawId) {
     err("check-err", "Enter email or username");
     return;
   }
-
   const btn = e.target.querySelector("button");
   setLoading(btn, true);
-
   try {
-    const isEmail = rawId.includes("@");
+    const isMail = rawId.includes("@");
     let exists = false;
-
-    if (isEmail) {
-      const { error } = await sb.auth.signInWithPassword({
-        email: rawId,
-        password: "dummy",
+    if (isMail) {
+      const { data, error } = await sb.rpc("user_exists_by_email", {
+        email_input: rawId,
       });
-      exists = error && error.message !== "Invalid login credentials";
+      if (error) throw error;
+      exists = data;
       email = rawId;
     } else {
-      const { data } = await sb.rpc("get_user_by_username", {
+      const { data, error } = await sb.rpc("get_user_by_username", {
         username_input: rawId,
       });
-      exists = data?.length > 0;
+      if (error) throw error;
+      exists = !!data?.length;
       email = data?.[0]?.email || "";
       username = rawId;
     }
-
     if (exists && email) {
       $("login-label").textContent = `Account: ${email}`;
       show("login");
@@ -99,156 +81,127 @@ async function handleCheckUser(e) {
         : `Username: ${username}`;
       show("signup");
     }
-  } catch (e0) {
-    console.error(e0);
-    err("check-err", "Something went wrong");
-  } finally {
-    setLoading(btn, false);
+  } catch (x) {
+    console.error(x);
+    err("check-err", "Unable to check user");
   }
+  setLoading(btn, false);
 }
-
-// ---------- 2. Login ----------
-async function handleLogin(e) {
+/* ---------- 2. login ---------- */
+async function login(e) {
   e.preventDefault();
-  const password = $("login-pwd").value;
-  if (!password) {
+  const pwd = $("login-pwd").value;
+  if (!pwd) {
     err("login-err", "Enter password");
     return;
   }
-
   const btn = e.target.querySelector("button");
   setLoading(btn, true);
-
-  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+  const { data, error } = await sb.auth.signInWithPassword({
+    email,
+    password: pwd,
+  });
   if (error) {
     err("login-err", error.message);
   } else {
     renderUser(data.user);
     show("home");
   }
-
   setLoading(btn, false);
 }
-
-// ---------- 3. Signup ----------
-async function handleSignup(e) {
+/* ---------- 3. signup ---------- */
+async function signup(e) {
   e.preventDefault();
   username = $("su-username").value.trim();
-  const pwd = $("su-pwd").value;
-  const pwd2 = $("su-pwd2").value;
-
+  const p1 = $("su-pwd").value,
+    p2 = $("su-pwd2").value;
   if (!username) {
     err("signup-err", "Enter username");
     return;
   }
-  if (pwd.length < 6) {
-    err("signup-err", "Password ≥ 6 chars");
+  if (p1.length < 6) {
+    err("signup-err", "Password ≥6 chars");
     return;
   }
-  if (pwd !== pwd2) {
+  if (p1 !== p2) {
     err("signup-err", "Passwords do not match");
     return;
   }
-
   if (!email) {
-    // user typed only username
-    const promptMail = prompt("Enter your email address:");
-    if (!promptMail?.includes("@")) {
+    const ask = prompt("Email address?");
+    if (!ask?.includes("@")) {
       err("signup-err", "Valid email required");
       return;
     }
-    email = promptMail.trim();
+    email = ask.trim();
   }
-
   const btn = e.target.querySelector("button");
   setLoading(btn, true);
-
   const { data, error } = await sb.auth.signUp({
     email,
-    password: pwd,
+    password: p1,
     options: { data: { username } },
   });
-
   if (error) {
     err("signup-err", error.message);
   } else {
     $("otp-mail").textContent = email;
     show("otp");
   }
-
   setLoading(btn, false);
 }
-
-// ---------- 4. Verify OTP ----------
-async function handleVerifyOtp(e) {
+/* ---------- 4. verify otp ---------- */
+async function verifyOtp(e) {
   e.preventDefault();
   const code = $("otp-code").value.trim();
   if (code.length !== 6) {
-    err("otp-err", "Enter 6-digit code");
+    err("otp-err", "6-digit code");
     return;
   }
-
   const btn = e.target.querySelector("button");
   setLoading(btn, true);
-
   const { data, error } = await sb.auth.verifyOtp({
     email,
     token: code,
     type: "email",
   });
-
   if (error) {
     err("otp-err", error.message);
   } else {
     renderUser(data.user);
     show("home");
   }
-
   setLoading(btn, false);
 }
-
-// ---------- 5. Resend OTP ----------
-async function handleResendOtp() {
-  const link = $("otp-resend");
-  link.textContent = "Sending…";
-  link.disabled = true;
-
+/* ---------- resend otp ---------- */
+async function resendOtp() {
+  const a = $("otp-resend");
+  a.textContent = "Sending…";
+  a.disabled = true;
   const { error } = await sb.auth.signInWithOtp({ email });
-  if (error) err("otp-err", "Could not resend");
+  if (error) err("otp-err", "Couldn’t resend");
   else {
-    link.textContent = "Code sent!";
-    setTimeout(() => (link.textContent = "Resend code"), 3000);
+    a.textContent = "Code sent!";
+    setTimeout(() => (a.textContent = "Resend code"), 3000);
   }
-  link.disabled = false;
+  a.disabled = false;
 }
-
-// ---------- Helper: dashboard ----------
+/* ---------- dashboard ---------- */
 function renderUser(u) {
   $("u-mail").textContent = u.email;
   $("u-name").textContent = u.user_metadata?.username || "–";
   $("u-date").textContent = new Date(u.created_at).toLocaleDateString();
 }
-
-// ---------- Logout ----------
-async function handleLogout() {
+/* ---------- logout ---------- */
+async function logout() {
   await sb.auth.signOut();
   document.querySelectorAll("form").forEach((f) => f.reset());
   rawId = email = username = "";
   show("check-user");
 }
-
-// ---------- Small helpers ----------
-function setLoading(btn, on) {
-  if (on) {
-    btn.classList.add("loading");
-    btn.disabled = true;
-  } else {
-    btn.classList.remove("loading");
-    btn.disabled = false;
-  }
-}
-function matchPasswords() {
-  const p1 = $("su-pwd").value,
-    p2 = $("su-pwd2").value;
-  err("signup-err", p1 && p2 && p1 !== p2 ? "Passwords do not match" : "");
+/* ---------- helpers ---------- */
+function matchPwds() {
+  const a = $("su-pwd").value,
+    b = $("su-pwd2").value;
+  err("signup-err", a && b && a !== b ? "Passwords do not match" : "");
 }
