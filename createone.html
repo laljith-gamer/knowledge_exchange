@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Upload Video</title>
+  <title>Share Your Secret - SecretShare</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dashboard-body">
@@ -11,12 +11,12 @@
     <!-- Navigation -->
     <nav class="dashboard-nav">
       <div class="nav-brand">
-        <h3>📹 VideoShare</h3>
+        <h3>🔒 SecretShare</h3>
       </div>
       <div class="nav-links">
         <a href="home.html" class="nav-link">
           <span class="nav-icon">🏠</span>
-          Home
+          Feed
         </a>
         <a href="profile.html" class="nav-link">
           <span class="nav-icon">👤</span>
@@ -24,7 +24,7 @@
         </a>
         <a href="createone.html" class="nav-link active">
           <span class="nav-icon">➕</span>
-          Upload
+          Share Secret
         </a>
       </div>
       <button class="btn secondary logout-btn" id="logout">Sign out</button>
@@ -34,8 +34,8 @@
     <main class="dashboard-main">
       <div class="upload-container">
         <div class="page-header">
-          <h1>Upload Your Video</h1>
-          <p class="page-subtitle">Share your moments with the world</p>
+          <h1>Share Your Secret Knowledge</h1>
+          <p class="page-subtitle">Help others learn from your expertise</p>
         </div>
 
         <div class="upload-form-container">
@@ -44,6 +44,7 @@
             <!-- Video Upload -->
             <div class="form-section">
               <h3>🎬 Video Upload</h3>
+              <p class="section-note">Upload your video explaining the secret technique</p>
               
               <div class="form-group">
                 <label for="video-file">Select Video *</label>
@@ -62,20 +63,110 @@
               </div>
             </div>
 
-            <!-- Video Details -->
+            <!-- Content Details -->
             <div class="form-section">
-              <h3>📝 Video Details</h3>
+              <h3>📝 Content Details</h3>
               
               <div class="form-group">
                 <label for="video-title">Title *</label>
-                <input id="video-title" type="text" placeholder="Give your video a catchy title..." required maxlength="200">
+                <input id="video-title" type="text" placeholder="Give your secret a catchy title..." required maxlength="200">
                 <small class="char-count">0/200</small>
               </div>
               
               <div class="form-group">
                 <label for="video-description">Description</label>
-                <textarea id="video-description" placeholder="Tell people about your video..." rows="4" maxlength="500"></textarea>
+                <textarea id="video-description" placeholder="Describe what makes this secret valuable..." rows="4" maxlength="500"></textarea>
                 <small class="char-count">0/500</small>
+              </div>
+
+              <div class="form-group">
+                <label for="secret-preview">Secret Preview *</label>
+                <textarea id="secret-preview" placeholder="Write a teaser that hints at your secret without giving it away..." rows="3" maxlength="300" required></textarea>
+                <small class="char-count">0/300</small>
+                <small class="form-help">This preview will be shown to users before they request access</small>
+              </div>
+            </div>
+
+            <!-- Secret Knowledge Settings -->
+            <div class="form-section">
+              <h3>🔐 Secret Settings</h3>
+              
+              <div class="form-group">
+                <label for="category">Category *</label>
+                <select id="category" required>
+                  <option value="">Select a category</option>
+                  <option value="programming">💻 Programming</option>
+                  <option value="cooking">🍳 Cooking</option>
+                  <option value="art-design">🎨 Art & Design</option>
+                  <option value="business">📈 Business</option>
+                  <option value="fitness">🏃 Fitness</option>
+                  <option value="music">🎵 Music</option>
+                  <option value="photography">📸 Photography</option>
+                  <option value="marketing">📱 Marketing</option>
+                  <option value="lifestyle">✨ Lifestyle</option>
+                  <option value="general">🌟 General</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label class="checkbox-label">
+                  <input type="checkbox" id="is-secret">
+                  <span>🔒 This is secret knowledge (requires access request)</span>
+                </label>
+                <small class="form-help">Unchecked means everyone can view this video freely</small>
+              </div>
+
+              <div id="secret-options" class="secret-options hidden">
+                <div class="form-group">
+                  <label>Access Type</label>
+                  <div class="access-type-options">
+                    <label class="access-option">
+                      <input type="radio" name="access-type" value="free" checked>
+                      <span>💚 Free (I'll share for free)</span>
+                    </label>
+                    <label class="access-option">
+                      <input type="radio" name="access-type" value="paid">
+                      <span>💰 Paid (Set a price)</span>
+                    </label>
+                    <label class="access-option">
+                      <input type="radio" name="access-type" value="exchange">
+                      <span>🔄 Exchange (Trade skills/knowledge)</span>
+                    </label>
+                    <label class="access-option">
+                      <input type="radio" name="access-type" value="followers-only">
+                      <span>👥 Followers Only</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div class="form-group" id="price-group" style="display: none;">
+                  <label for="price">Price (USD) *</label>
+                  <input id="price" type="number" min="1" max="999" step="0.01" placeholder="29.99">
+                  <small class="form-help">Set a fair price for your secret knowledge</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Additional Info -->
+            <div class="form-section">
+              <h3>🔗 Additional Info</h3>
+              
+              <div class="form-group">
+                <label for="tags">Tags (comma separated)</label>
+                <input id="tags" type="text" placeholder="javascript, animation, css, performance">
+                <small class="form-help">Help others discover your content with relevant tags</small>
+              </div>
+
+              <div class="form-group">
+                <label for="instagram-link">Instagram Post Link</label>
+                <input id="instagram-link" type="url" placeholder="https://instagram.com/p/your-post">
+                <small class="form-help">Link to your Instagram post about this secret (optional)</small>
+              </div>
+
+              <div class="form-group">
+                <label for="duration">Estimated Duration (seconds)</label>
+                <input id="duration" type="number" min="1" placeholder="120">
+                <small class="form-help">Approximate video length to help users</small>
               </div>
             </div>
 
@@ -88,12 +179,11 @@
               <p id="upload-status">Preparing upload...</p>
             </div>
 
-            <!-- Submit -->
+            <!-- Submit Actions -->
             <div class="form-actions">
               <button type="button" class="btn secondary" id="save-draft">💾 Save Draft</button>
-              <button type="submit" class="btn primary" id="upload-btn">🚀 Upload Video</button>
+              <button type="submit" class="btn primary" id="upload-btn">🚀 Share Secret</button>
             </div>
-
           </form>
         </div>
 
@@ -102,7 +192,7 @@
     </main>
   </div>
 
-  <!-- libs -->
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
   <script src="config.js"></script>
   <script src="dashboard.js"></script>
