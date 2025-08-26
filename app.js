@@ -1,33 +1,10 @@
-/*  app.js – dynamic login / signup / OTP  */
-
-/* ⚠️ Required SQL helpers (execute once in Supabase SQL editor):
-
--- check by e-mail
-create or replace function user_exists_by_email(email_input text)
-returns boolean language sql security definer as $$
-select exists(select 1 from auth.users
-              where lower(email)=lower(email_input));
-$$;
-
--- find e-mail by username
-create or replace function get_user_by_username(username_input text)
-returns table(email text) language sql security definer as $$
-begin
-  return query
-  select auth.users.email::text
-  from auth.users
-  where auth.users.raw_user_meta_data ->> 'username' = username_input
-  limit 1;
-end;
-$$;
-*/
-
 const sb = window.supabaseClient;
 
 /* ---------- state ---------- */
 let rawId = ""; // as typed
 let email = "";
 let uname = "";
+let isNewSignup = false; // track if this is a new signup flow
 
 /* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
@@ -52,8 +29,17 @@ document.addEventListener("DOMContentLoaded", async () => {
     data: { session },
   } = await sb.auth.getSession();
   if (session?.user) {
-    drawUser(session.user);
-    show("step-home");
+    // Check if user has completed profile setup
+    const hasUsername = session.user.user_metadata?.username;
+    if (!hasUsername && session.user.email_confirmed_at) {
+      // User verified email but hasn't completed profile
+      email = session.user.email;
+      isNewSignup = true;
+      show("step-profile");
+    } else {
+      drawUser(session.user);
+      show("step-home");
+    }
   } else show("step-check");
   bindEvents();
 });
@@ -64,13 +50,15 @@ function bindEvents() {
   $("form-login").onsubmit = onLogin;
   $("form-signup").onsubmit = onSignup;
   $("form-otp").onsubmit = onVerify;
+  $("form-profile").onsubmit = onCompleteProfile; // NEW
   $("otp-resend").onclick = resendOtp;
   $("logout").onclick = logout;
 
   $("back-login").onclick = () => show("step-check");
   $("back-signup").onclick = () => show("step-check");
 
-  $("su-pass2").oninput = () => matchPwds();
+  // Password matching for profile completion
+  $("profile-pass2").oninput = () => matchProfilePwds();
   $("otp-code").oninput = (e) =>
     (e.target.value = e.target.value.replace(/\D/g, "").slice(0, 6));
 }
@@ -112,9 +100,22 @@ async function onCheck(e) {
       $("login-label").textContent = `Account: ${email}`;
       show("step-login");
     } else {
+      isNewSignup = true;
       $("signup-label").textContent = email
         ? `Create account for ${email}`
-        : `Username: ${uname}`;
+        : `We need your email address to continue`;
+
+      if (!email) {
+        // If username was entered, ask for email
+        const ask = prompt("Enter your email address:");
+        if (!ask?.includes("@")) {
+          setErr("err-check", "Valid email required");
+          spinner(btn, false);
+          return;
+        }
+        email = ask.trim();
+        $("signup-label").textContent = `Create account for ${email}`;
+      }
       show("step-signup");
     }
   } catch (x) {
@@ -148,42 +149,26 @@ async function onLogin(e) {
   spinner(btn, false);
 }
 
-/* ---------- 3 • signup ---------- */
+/* ---------- 3 • signup (modified) ---------- */
 async function onSignup(e) {
   e.preventDefault();
-  uname = $("su-user").value.trim();
-  const p1 = $("su-pass").value,
-    p2 = $("su-pass2").value;
-
-  if (!uname) {
-    setErr("err-signup", "Enter username");
-    return;
-  }
-  if (p1.length < 6) {
-    setErr("err-signup", "Password ≥6 chars");
-    return;
-  }
-  if (p1 !== p2) {
-    setErr("err-signup", "Passwords do not match");
-    return;
-  }
 
   if (!email) {
-    const ask = prompt("Email address?");
-    if (!ask?.includes("@")) {
-      setErr("err-signup", "Valid email required");
-      return;
-    }
-    email = ask.trim();
+    setErr("err-signup", "Email address required");
+    return;
   }
 
   const btn = e.target.querySelector("button");
   spinner(btn, true);
-  const { data, error } = await sb.auth.signUp({
-    email,
-    password: p1,
-    options: { data: { username: uname } },
+
+  // Send OTP without creating full account yet
+  const { data, error } = await sb.auth.signInWithOtp({
+    email: email,
+    options: {
+      shouldCreateUser: true,
+    },
   });
+
   if (error) {
     setErr("err-signup", error.message);
   } else {
@@ -209,12 +194,84 @@ async function onVerify(e) {
     token: code,
     type: "email",
   });
+
   if (error) {
     setErr("err-otp", error.message);
   } else {
-    drawUser(data.user);
-    show("step-home");
+    if (isNewSignup) {
+      // New signup - go to profile completion
+      show("step-profile");
+    } else {
+      // Existing user login
+      drawUser(data.user);
+      show("step-home");
+    }
   }
+  spinner(btn, false);
+}
+
+/* ---------- 5 • complete profile (NEW) ---------- */
+async function onCompleteProfile(e) {
+  e.preventDefault();
+  uname = $("profile-user").value.trim();
+  const p1 = $("profile-pass").value;
+  const p2 = $("profile-pass2").value;
+
+  if (!uname) {
+    setErr("err-profile", "Enter username");
+    return;
+  }
+  if (uname.length < 3) {
+    setErr("err-profile", "Username must be at least 3 characters");
+    return;
+  }
+  if (p1.length < 6) {
+    setErr("err-profile", "Password must be at least 6 characters");
+    return;
+  }
+  if (p1 !== p2) {
+    setErr("err-profile", "Passwords do not match");
+    return;
+  }
+
+  const btn = e.target.querySelector("button");
+  spinner(btn, true);
+
+  try {
+    // Check if username is available
+    const { data: existingUser, error: checkError } = await sb.rpc(
+      "get_user_by_username",
+      {
+        username_input: uname,
+      }
+    );
+
+    if (checkError) throw checkError;
+
+    if (existingUser && existingUser.length > 0) {
+      setErr("err-profile", "Username already taken");
+      spinner(btn, false);
+      return;
+    }
+
+    // Update user password and metadata
+    const { data, error } = await sb.auth.updateUser({
+      password: p1,
+      data: { username: uname },
+    });
+
+    if (error) {
+      setErr("err-profile", error.message);
+    } else {
+      isNewSignup = false;
+      drawUser(data.user);
+      show("step-home");
+    }
+  } catch (x) {
+    console.error(x);
+    setErr("err-profile", "Unable to complete registration");
+  }
+
   spinner(btn, false);
 }
 
@@ -224,7 +281,7 @@ async function resendOtp() {
   link.disabled = true;
   link.textContent = "Sending…";
   const { error } = await sb.auth.signInWithOtp({ email });
-  if (error) setErr("err-otp", "Couldn’t resend");
+  if (error) setErr("err-otp", "Couldn't resend");
   else {
     link.textContent = "Code sent!";
     setTimeout(() => (link.textContent = "Resend code"), 3000);
@@ -244,12 +301,13 @@ async function logout() {
   await sb.auth.signOut();
   document.querySelectorAll("form").forEach((f) => f.reset());
   rawId = email = uname = "";
+  isNewSignup = false;
   show("step-check");
 }
 
 /* ---------- misc ---------- */
-function matchPwds() {
-  const a = $("su-pass").value,
-    b = $("su-pass2").value;
-  setErr("err-signup", a && b && a !== b ? "Passwords do not match" : "");
+function matchProfilePwds() {
+  const a = $("profile-pass").value;
+  const b = $("profile-pass2").value;
+  setErr("err-profile", a && b && a !== b ? "Passwords do not match" : "");
 }

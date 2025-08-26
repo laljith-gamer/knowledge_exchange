@@ -47,11 +47,9 @@
 
         <p id="signup-label" class="hint"></p>
 
-        <form id="form-signup" autocomplete="new-password">
-          <input id="su-user"  type="text"      placeholder="Username"        required>
-          <input id="su-pass"  type="password"  placeholder="Password (≥6)"  minlength="6" required>
-          <input id="su-pass2" type="password"  placeholder="Confirm password" minlength="6" required>
-          <button class="btn primary" type="submit">Register</button>
+        <form id="form-signup">
+          <p class="info">We'll send a verification code to your email address.</p>
+          <button class="btn primary" type="submit">Send verification code</button>
         </form>
 
         <p id="err-signup" class="error" role="alert"></p>
@@ -76,7 +74,25 @@
       </article>
     </section>
 
-    <!-- 5 ▸ dashboard -->
+    <!-- 5 ▸ profile setup (NEW) -->
+    <section id="step-profile" class="panel" aria-labelledby="profile-title">
+      <article class="card">
+        <h2 id="profile-title">Complete your profile</h2>
+
+        <p class="hint">Set your username and password to complete registration.</p>
+
+        <form id="form-profile" autocomplete="new-password">
+          <input id="profile-user" type="text" placeholder="Username" required minlength="3">
+          <input id="profile-pass" type="password" placeholder="Password (≥6)" minlength="6" required>
+          <input id="profile-pass2" type="password" placeholder="Confirm password" minlength="6" required>
+          <button class="btn primary" type="submit">Complete registration</button>
+        </form>
+
+        <p id="err-profile" class="error" role="alert"></p>
+      </article>
+    </section>
+
+    <!-- 6 ▸ dashboard -->
     <section id="step-home" class="panel" aria-labelledby="home-title">
       <article class="card">
         <h2 id="home-title">Dashboard</h2>
