@@ -526,10 +526,19 @@ window.changeCategory = function (category) {
 
 function initializeUploadForm() {
   const videoFile = $("video-file");
-  if (videoFile) videoFile.onchange = handleVideoSelect;
+  if (videoFile) {
+    // Remove any existing event listeners to prevent duplicates
+    videoFile.removeEventListener("change", handleVideoSelect);
+    videoFile.addEventListener("change", handleVideoSelect);
+    console.log("✓ Video file input bound successfully");
+  }
 
   const removeVideo = $("remove-video");
-  if (removeVideo) removeVideo.onclick = removeVideoPreview;
+  if (removeVideo) {
+    removeVideo.removeEventListener("click", removeVideoPreview);
+    removeVideo.addEventListener("click", removeVideoPreview);
+    console.log("✓ Remove video button bound successfully");
+  }
 
   // Character counters
   const titleInput = $("video-title");
@@ -781,15 +790,15 @@ async function createVideoCard(video) {
             </div>
           </div>
         </div>
-      `
+        `
           : `
         <div class="video-container">
-          <video controls preload="metadata">
+          <video controls preload="metadata" key="${video.id}">
             <source src="${videoContent}" type="video/mp4">
             Your browser does not support the video tag.
           </video>
         </div>
-      `
+        `
       }
       
       <div class="post-description">
@@ -817,13 +826,13 @@ async function createVideoCard(video) {
           <span class="heart-icon">🤍</span>
           <span>Request Access</span>
         </button>
-      `
+        `
           : `
         <button class="action-btn like-btn" data-video-id="${video.id}">
           <span>❤️</span>
           <span class="like-count">${video.likes_count || 0} Likes</span>
         </button>
-      `
+        `
       }
       <button class="action-btn comment-btn" data-video-id="${video.id}">
         <span>💬</span>
@@ -1316,7 +1325,7 @@ async function handleSecretRequest(e) {
   }
 }
 
-/* ---------- VIDEO UPLOAD FUNCTIONALITY ---------- */
+/* ---------- VIDEO UPLOAD FUNCTIONALITY - ENHANCED VIDEO PREVIEW ---------- */
 function handleDragOver(e) {
   e.preventDefault();
   e.currentTarget.classList.add("dragover");
@@ -1346,7 +1355,8 @@ function handleVideoSelect(e) {
   const preview = $("video-preview");
   const uploadArea = $("video-upload-area");
 
-  console.log("Video file selected:", file); // Debug log
+  console.log("=== VIDEO FILE SELECTED ===");
+  console.log("File:", file);
 
   if (!file) {
     console.log("No file selected");
@@ -1380,26 +1390,37 @@ function handleVideoSelect(e) {
     const video = preview.querySelector("video");
     if (video) {
       try {
-        // **CRITICAL FIX: Always revoke previous object URL**
+        console.log("Setting up video preview...");
+
+        // **CRITICAL FIX: Always revoke previous object URL first**
         if (video.src && video.src.startsWith("blob:")) {
           URL.revokeObjectURL(video.src);
-          console.log("Previous object URL revoked");
+          console.log("✅ Previous object URL revoked");
         }
 
-        // Clear the video source
+        // Clear the video source completely
         video.src = "";
+        video.removeAttribute("src");
         video.load();
+
+        // Pause if playing
+        if (!video.paused) {
+          video.pause();
+        }
 
         // Create new object URL
         const newVideoUrl = URL.createObjectURL(file);
-        console.log("New object URL created:", newVideoUrl);
+        console.log("✅ New object URL created:", newVideoUrl);
 
         // Set new source and show preview
         video.src = newVideoUrl;
-        video.load(); // **IMPORTANT: Force reload**
+        video.load(); // **IMPORTANT: Force reload of video element**
 
+        // Show preview, hide upload area
         preview.classList.remove("hidden");
         uploadArea.style.display = "none";
+
+        console.log("✅ Video preview updated successfully");
 
         // Auto-fill title if empty
         const titleInput = $("video-title");
@@ -1407,46 +1428,116 @@ function handleVideoSelect(e) {
           const fileName = file.name.replace(/\.[^/.]+$/, "");
           titleInput.value = fileName.replace(/[_-]/g, " ");
           updateCharCount("video-title", 200);
+          console.log("✅ Title auto-filled:", titleInput.value);
         }
 
-        // **IMPORTANT: Handle video load events**
-        video.addEventListener("loadeddata", () => {
-          console.log("✅ Video loaded successfully");
-        });
+        // **IMPORTANT: Add event listeners for video load events**
+        video.addEventListener(
+          "loadeddata",
+          () => {
+            console.log("✅ Video data loaded successfully");
+          },
+          { once: true }
+        );
 
-        video.addEventListener("error", (e) => {
-          console.error("❌ Video load error:", e);
-          showMessage("upload-message", "Error loading video preview", "error");
-        });
+        video.addEventListener(
+          "error",
+          (errorEvent) => {
+            console.error("❌ Video load error:", errorEvent);
+            showMessage(
+              "upload-message",
+              "Error loading video preview",
+              "error"
+            );
+          },
+          { once: true }
+        );
+
+        video.addEventListener(
+          "canplay",
+          () => {
+            console.log("✅ Video can start playing");
+          },
+          { once: true }
+        );
       } catch (error) {
-        console.error("Error creating video preview:", error);
+        console.error("❌ Error creating video preview:", error);
         showMessage("upload-message", "Error creating video preview", "error");
       }
+    } else {
+      console.error("❌ Video element not found in preview container");
     }
+  } else {
+    console.error("❌ Preview container or upload area not found");
   }
 }
-
 
 function removeVideoPreview() {
   const preview = $("video-preview");
   const uploadArea = $("video-upload-area");
   const fileInput = $("video-file");
 
+  console.log("=== REMOVING VIDEO PREVIEW ===");
+
   if (preview && uploadArea && fileInput) {
     const video = preview.querySelector("video");
     if (video) {
+      console.log("Cleaning up video element...");
+
+      // **CRITICAL: Properly clean up object URL to prevent memory leaks**
       if (video.src && video.src.startsWith("blob:")) {
         URL.revokeObjectURL(video.src);
+        console.log("✅ Object URL revoked on removal");
       }
+
+      // Clear video completely
       video.src = "";
+      video.removeAttribute("src");
+      video.load();
+
+      // Pause if playing
+      if (!video.paused) {
+        video.pause();
+        console.log("✅ Video paused");
+      }
+
+      // Remove any event listeners (they were set with { once: true }, so they should auto-remove)
     }
 
+    // Reset UI state
     preview.classList.add("hidden");
     uploadArea.style.display = "block";
     fileInput.value = "";
     showMessage("upload-message", "", "");
+
+    console.log("✅ Video preview removed successfully");
+  } else {
+    console.error("❌ Required elements not found for video removal");
   }
 }
+
+// **Add cleanup on page unload to prevent memory leaks**
+window.addEventListener("beforeunload", () => {
+  console.log("=== PAGE UNLOAD: Cleaning up video object URLs ===");
+
+  // Clean up video preview
+  const preview = $("video-preview");
+  if (preview) {
+    const video = preview.querySelector("video");
+    if (video && video.src && video.src.startsWith("blob:")) {
+      URL.revokeObjectURL(video.src);
+      console.log("✅ Upload preview URL revoked on page unload");
+    }
+  }
+
+  // Clean up any feed video elements with blob URLs
+  document.querySelectorAll("video").forEach((video, index) => {
+    if (video.src && video.src.startsWith("blob:")) {
+      URL.revokeObjectURL(video.src);
+      console.log(`✅ Feed video ${index} URL revoked on page unload`);
+    }
+  });
+});
 
 async function uploadVideo(e) {
   e.preventDefault();
@@ -1635,6 +1726,7 @@ async function uploadVideo(e) {
 /* ---------- PROFILE UPDATE FUNCTIONALITY ---------- */
 async function handleProfileUpdate(e) {
   e.preventDefault();
+  console.log("=== PROFILE UPDATE START ===");
 
   const usernameInput = $("update-username");
   const fullNameInput = $("update-fullname");
@@ -1642,14 +1734,20 @@ async function handleProfileUpdate(e) {
   const instagramInput = $("update-instagram");
   const websiteInput = $("update-website");
 
-  if (!usernameInput) return;
+  if (!usernameInput) {
+    console.error("Username input not found");
+    return;
+  }
 
   const username = usernameInput.value.trim();
-  const fullName = fullNameInput?.value.trim();
-  const bio = bioInput?.value.trim();
-  const instagram = instagramInput?.value.trim();
-  const website = websiteInput?.value.trim();
+  const fullName = fullNameInput?.value.trim() || null;
+  const bio = bioInput?.value.trim() || null;
+  const instagram = instagramInput?.value.trim() || null;
+  const website = websiteInput?.value.trim() || null;
 
+  console.log("Form data:", { username, fullName, bio, instagram, website });
+
+  // Validation
   if (!username) {
     showMessage("profile-message", "Username is required", "error");
     return;
@@ -1680,66 +1778,33 @@ async function handleProfileUpdate(e) {
   }
 
   try {
-    // Try RPC function first
-    let result;
-    try {
-      const { data: rpcResult, error: rpcError } = await sb.rpc(
-        "update_user_profile",
-        {
-          p_user_id: currentUser.id,
-          p_username: username,
-          p_full_name: fullName || null,
-          p_bio: bio || null,
-          p_instagram_handle: instagram || null,
-          p_website_url: website || null,
-        }
-      );
+    console.log("Attempting profile update...");
+    console.log("Current user ID:", currentUser.id);
 
-      if (rpcError) throw rpcError;
-      result = rpcResult;
-    } catch (rpcError) {
-      // Fallback to direct update
-      console.log("RPC failed, trying direct update:", rpcError);
-
-      // Check if username is already taken
-      const { data: existingProfile } = await sb
-        .from("profiles")
-        .select("id")
-        .eq("username", username)
-        .neq("id", currentUser.id)
-        .single();
-
-      if (existingProfile) {
-        result = { success: false, message: "Username already taken" };
-      } else {
-        // Update profile
-        const { error: updateError } = await sb
-          .from("profiles")
-          .update({
-            username: username,
-            full_name: fullName || null,
-            bio: bio || null,
-            instagram_handle: instagram || null,
-            website_url: website || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", currentUser.id);
-
-        if (updateError) throw updateError;
-
-        // Update auth metadata
-        await sb.auth.updateUser({
-          data: {
-            username: username,
-            full_name: fullName || "",
-          },
-        });
-
-        result = { success: true, message: "Profile updated successfully" };
+    // Try the RPC function first
+    const { data: rpcResult, error: rpcError } = await sb.rpc(
+      "update_user_profile",
+      {
+        p_user_id: currentUser.id,
+        p_username: username,
+        p_full_name: fullName,
+        p_bio: bio,
+        p_instagram_handle: instagram,
+        p_website_url: website,
       }
+    );
+
+    console.log("RPC Result:", rpcResult);
+    console.log("RPC Error:", rpcError);
+
+    if (rpcError) {
+      console.error("RPC Error details:", rpcError);
+      throw rpcError;
     }
 
-    if (result && result.success) {
+    if (rpcResult && rpcResult.success) {
+      console.log("✅ Profile updated successfully via RPC");
+
       showMessage(
         "profile-message",
         "Profile updated successfully! ✅",
@@ -1753,22 +1818,94 @@ async function handleProfileUpdate(e) {
         full_name: fullName,
       };
 
+      // Update auth user metadata
+      try {
+        await sb.auth.updateUser({
+          data: {
+            username: username,
+            full_name: fullName || "",
+          },
+        });
+        console.log("✅ Auth metadata updated");
+      } catch (authError) {
+        console.log(
+          "⚠️ Auth metadata update failed (non-critical):",
+          authError
+        );
+      }
+
       // Reload profile data to update display
-      await loadUserProfileData();
+      setTimeout(() => loadUserProfileData(), 1000);
     } else {
+      console.error("❌ RPC returned failure:", rpcResult);
       showMessage(
         "profile-message",
-        result?.message || "Failed to update profile",
+        rpcResult?.message || "Failed to update profile",
         "error"
       );
     }
   } catch (error) {
-    console.error("Error updating profile:", error);
-    showMessage(
-      "profile-message",
-      "Failed to update profile. Please try again.",
-      "error"
-    );
+    console.error("❌ Profile update error:", error);
+
+    // Try direct update as fallback
+    console.log("🔄 Trying direct database update...");
+
+    try {
+      // Check if username is available first
+      const { data: existingProfile, error: checkError } = await sb
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .neq("id", currentUser.id)
+        .single();
+
+      if (existingProfile) {
+        showMessage("profile-message", "Username already taken", "error");
+        return;
+      }
+
+      // Direct update
+      const { data: updateData, error: updateError } = await sb
+        .from("profiles")
+        .update({
+          username: username,
+          full_name: fullName,
+          bio: bio,
+          instagram_handle: instagram,
+          website_url: website,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", currentUser.id)
+        .select();
+
+      console.log("Direct update result:", updateData);
+      console.log("Direct update error:", updateError);
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      console.log("✅ Profile updated successfully via direct update");
+      showMessage(
+        "profile-message",
+        "Profile updated successfully! ✅",
+        "success"
+      );
+
+      setTimeout(() => loadUserProfileData(), 1000);
+    } catch (fallbackError) {
+      console.error("❌ Fallback update failed:", fallbackError);
+
+      if (fallbackError.code === "23505") {
+        showMessage("profile-message", "Username already taken", "error");
+      } else {
+        showMessage(
+          "profile-message",
+          `Update failed: ${fallbackError.message}`,
+          "error"
+        );
+      }
+    }
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
@@ -2233,6 +2370,28 @@ window.debugFunctions = {
   handleSecretRequest,
   handleCommentSubmit,
   loadUserProfileData,
+  testVideoPreview: () => {
+    console.log("=== VIDEO PREVIEW DEBUG ===");
+
+    const fileInput = $("video-file");
+    const preview = $("video-preview");
+    const uploadArea = $("video-upload-area");
+
+    console.log("File input:", fileInput);
+    console.log("Preview element:", preview);
+    console.log("Upload area:", uploadArea);
+
+    if (preview) {
+      const video = preview.querySelector("video");
+      console.log("Video element:", video);
+      if (video) {
+        console.log("Video src:", video.src);
+        console.log("Video duration:", video.duration);
+        console.log("Video ready state:", video.readyState);
+        console.log("Video paused:", video.paused);
+      }
+    }
+  },
   debugClicks: () => {
     console.log("=== DEBUGGING CLICKS ===");
 
@@ -2278,3 +2437,4 @@ window.changeCategory = window.changeCategory;
 console.log("✅ Dashboard.js loaded successfully!");
 console.log("🔧 Debug functions available: window.debugFunctions");
 console.log("🎬 Request modal function: window.showRequestModal()");
+console.log("📹 Video preview debug: debugFunctions.testVideoPreview()");
