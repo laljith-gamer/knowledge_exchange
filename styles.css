@@ -2206,3 +2206,24 @@ textarea:focus-visible {
         font-size: 28px;
     }
 }
+/* Add to your styles.css */
+.filter-tab,
+.story-item {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    position: relative;
+    z-index: 10;
+    user-select: none;
+}
+
+.filter-tab:hover,
+.story-item:hover {
+    transform: translateY(-2px);
+    transition: all 0.2s ease;
+}
+
+/* Ensure modals don't block clicks when hidden */
+.modal.hidden {
+    display: none !important;
+    pointer-events: none !important;
+}
