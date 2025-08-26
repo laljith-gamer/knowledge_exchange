@@ -603,6 +603,270 @@ function initializeUploadForm() {
   loadDraft();
 }
 
+/* ---------- REQUEST MANAGEMENT FUNCTIONALITY ---------- */
+async function loadCreatorRequests() {
+  console.log("Loading creator requests...");
+
+  const requestsList = $("requests-list");
+  const requestsCount = $("pending-requests-count");
+
+  if (!requestsList) {
+    console.log("Requests list element not found, skipping...");
+    return;
+  }
+
+  try {
+    requestsList.innerHTML = `
+      <div class="loading-requests">
+        <div class="loading-spinner small"></div>
+        <p>Loading requests...</p>
+      </div>
+    `;
+
+    const { data: requests, error } = await sb.rpc("get_creator_requests", {
+      p_creator_id: currentUser.id,
+    });
+
+    if (error) {
+      console.log("RPC function not found, trying fallback query...");
+
+      // Fallback direct query
+      const { data: fallbackRequests, error: fallbackError } = await sb
+        .from("secret_requests")
+        .select(
+          `
+          id,
+          reason,
+          offer_type,
+          offer_details,
+          status,
+          created_at,
+          video_id,
+          videos!inner(title),
+          profiles!secret_requests_requester_id_fkey(username)
+        `
+        )
+        .eq("creator_id", currentUser.id)
+        .eq("status", "pending")
+        .order("created_at", { ascending: false });
+
+      if (fallbackError) throw fallbackError;
+
+      const formattedRequests =
+        fallbackRequests?.map((request) => ({
+          id: request.id,
+          video_title: request.videos?.title || "Unknown Video",
+          requester_username: request.profiles?.username || "Unknown User",
+          requester_email: "N/A",
+          reason: request.reason,
+          offer_type: request.offer_type,
+          offer_details: request.offer_details,
+          status: request.status,
+          created_at: request.created_at,
+          video_id: request.video_id,
+        })) || [];
+
+      renderRequestsList(formattedRequests, requestsList, requestsCount);
+      return;
+    }
+
+    renderRequestsList(requests || [], requestsList, requestsCount);
+  } catch (error) {
+    console.error("Error loading requests:", error);
+    requestsList.innerHTML = `
+      <div class="error-requests">
+        <p>Failed to load requests. Please try again.</p>
+        <button onclick="loadCreatorRequests()" class="btn secondary small">Retry</button>
+      </div>
+    `;
+  }
+}
+
+function renderRequestsList(requests, requestsList, requestsCount) {
+  console.log(`Found ${requests?.length || 0} pending requests`);
+
+  // Update requests count badge
+  if (requestsCount) {
+    const count = requests?.length || 0;
+    if (count > 0) {
+      requestsCount.textContent = count;
+      requestsCount.style.display = "inline-block";
+    } else {
+      requestsCount.style.display = "none";
+    }
+  }
+
+  if (requests && requests.length > 0) {
+    requestsList.innerHTML = requests
+      .map((request) => createRequestHTML(request))
+      .join("");
+  } else {
+    requestsList.innerHTML = `
+      <div class="no-requests">
+        <p>No pending requests at the moment.</p>
+        <p style="font-size: 14px; color: var(--muted-text);">When users request access to your secret videos, they'll appear here.</p>
+      </div>
+    `;
+  }
+}
+
+function createRequestHTML(request) {
+  const timeAgo = getTimeAgo(new Date(request.created_at));
+  const avatarLetter = request.requester_username.charAt(0).toUpperCase();
+
+  return `
+    <div class="request-item" data-request-id="${request.id}">
+      <div class="request-header">
+        <div class="user-avatar small">${avatarLetter}</div>
+        <div class="request-meta">
+          <h4 class="request-username">${request.requester_username}</h4>
+          <p class="request-video">wants to learn: <strong>${
+            request.video_title
+          }</strong></p>
+          <span class="request-time">${timeAgo}</span>
+        </div>
+      </div>
+      
+      <div class="request-content">
+        <div class="request-reason">
+          <h5>Why they want to learn:</h5>
+          <p>${request.reason}</p>
+        </div>
+        
+        <div class="request-offer">
+          <h5>What they're offering:</h5>
+          <p><strong>${
+            request.offer_type.charAt(0).toUpperCase() +
+            request.offer_type.slice(1)
+          }:</strong> ${request.offer_details}</p>
+        </div>
+      </div>
+      
+      <div class="request-actions">
+        <button class="btn primary small" onclick="handleRequestDecision('${
+          request.id
+        }', 'approved')">
+          ✅ Approve
+        </button>
+        <button class="btn secondary small" onclick="handleRequestDecision('${
+          request.id
+        }', 'rejected')">
+          ❌ Decline  
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+async function handleRequestDecision(requestId, decision) {
+  console.log(`${decision} request:`, requestId);
+
+  const response =
+    decision === "approved"
+      ? prompt("Optional: Add a message for the requester:")
+      : prompt("Optional: Explain why you're declining:");
+
+  try {
+    // First try RPC function
+    let result;
+    try {
+      const { data: rpcResult, error: rpcError } = await sb.rpc(
+        "handle_request_decision",
+        {
+          p_request_id: requestId,
+          p_creator_id: currentUser.id,
+          p_decision: decision,
+          p_response: response || null,
+        }
+      );
+
+      if (rpcError) throw rpcError;
+      result = rpcResult;
+    } catch (rpcError) {
+      console.log("RPC function not available, using manual approach...");
+
+      // Manual approach
+      const { error: updateError } = await sb
+        .from("secret_requests")
+        .update({
+          status: decision,
+          creator_response: response || null,
+          responded_at: new Date().toISOString(),
+        })
+        .eq("id", requestId)
+        .eq("creator_id", currentUser.id);
+
+      if (updateError) throw updateError;
+
+      // If approved, grant access manually
+      if (decision === "approved") {
+        const { data: requestData } = await sb
+          .from("secret_requests")
+          .select("requester_id, video_id")
+          .eq("id", requestId)
+          .single();
+
+        if (requestData) {
+          await sb
+            .from("video_access")
+            .insert({
+              user_id: requestData.requester_id,
+              video_id: requestData.video_id,
+              access_method: "request",
+            })
+            .onConflict("user_id,video_id")
+            .ignore();
+        }
+      }
+
+      result = { success: true };
+    }
+
+    if (result && result.success !== false) {
+      showMessage(
+        "profile-message",
+        `Request ${decision} successfully! 🎉`,
+        "success"
+      );
+
+      // Reload requests list
+      loadCreatorRequests();
+
+      // Reload video feed to update counts
+      videosLoaded = 0;
+      loadVideoFeed();
+    } else {
+      showMessage(
+        "profile-message",
+        result?.message || "Failed to process request",
+        "error"
+      );
+    }
+  } catch (error) {
+    console.error("Error processing request:", error);
+    showMessage(
+      "profile-message",
+      "Failed to process request. Please try again.",
+      "error"
+    );
+  }
+}
+
+function showRequestsModal() {
+  const modal = $("requests-modal");
+  if (modal) {
+    modal.classList.remove("hidden");
+    loadCreatorRequests();
+  } else {
+    console.log("Requests modal not found - add the HTML modal to your page");
+    showMessage(
+      "profile-message",
+      "Requests feature not available - contact developer",
+      "info"
+    );
+  }
+}
+
 /* ---------- VIDEO FEED FUNCTIONALITY ---------- */
 async function loadVideoFeed() {
   console.log(
@@ -2171,6 +2435,9 @@ async function loadNotifications() {
         badge.style.display = "none";
       }
     }
+
+    // Also load creator requests count
+    loadCreatorRequests();
   } catch (error) {
     console.error("Notifications error:", error);
   }
@@ -2364,6 +2631,9 @@ window.debugFunctions = {
   uploadVideo,
   showRequestModal,
   showCommentsModal,
+  showRequestsModal,
+  loadCreatorRequests,
+  handleRequestDecision,
   currentUser: () => currentUser,
   isUploading: () => isUploading,
   clearFilters,
@@ -2431,6 +2701,8 @@ window.debugFunctions = {
 
 // Make key functions globally available
 window.showRequestModal = showRequestModal;
+window.showRequestsModal = showRequestsModal;
+window.handleRequestDecision = handleRequestDecision;
 window.changeFilter = window.changeFilter;
 window.changeCategory = window.changeCategory;
 
@@ -2438,3 +2710,4 @@ console.log("✅ Dashboard.js loaded successfully!");
 console.log("🔧 Debug functions available: window.debugFunctions");
 console.log("🎬 Request modal function: window.showRequestModal()");
 console.log("📹 Video preview debug: debugFunctions.testVideoPreview()");
+console.log("📝 Request management: debugFunctions.showRequestsModal()");
