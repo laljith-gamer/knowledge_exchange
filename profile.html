@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Dashboard - Profile</title>
+  <title>Profile - SecretShare</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dashboard-body">
@@ -11,12 +11,12 @@
     <!-- Navigation -->
     <nav class="dashboard-nav">
       <div class="nav-brand">
-        <h3>Dashboard</h3>
+        <h3>🔒 SecretShare</h3>
       </div>
       <div class="nav-links">
         <a href="home.html" class="nav-link">
           <span class="nav-icon">🏠</span>
-          Home
+          Feed
         </a>
         <a href="profile.html" class="nav-link active">
           <span class="nav-icon">👤</span>
@@ -24,7 +24,7 @@
         </a>
         <a href="createone.html" class="nav-link">
           <span class="nav-icon">➕</span>
-          Create One
+          Share Secret
         </a>
       </div>
       <button class="btn secondary logout-btn" id="logout">Sign out</button>
@@ -32,73 +32,191 @@
 
     <!-- Main Content -->
     <main class="dashboard-main">
-      <div class="dashboard-content">
+      <div class="profile-container">
         <div class="page-header">
-          <h1>My Profile</h1>
-          <p class="page-subtitle">Manage your account settings and preferences</p>
+          <h1>Your Profile</h1>
+          <p class="page-subtitle">Manage your account settings and information</p>
         </div>
 
-        <div class="profile-container">
+        <!-- Profile Overview -->
+        <div class="profile-overview">
           <div class="profile-card">
             <div class="profile-avatar">
-              <span class="avatar-placeholder" id="avatar-text">U</span>
+              <div class="user-avatar large" id="profile-avatar">👤</div>
+              <button class="btn secondary small">Change Avatar</button>
             </div>
-            
             <div class="profile-info">
-              <h2 id="profile-name">Loading...</h2>
-              <p id="profile-email">Loading...</p>
-              <p class="profile-date">Member since: <span id="profile-date">Loading...</span></p>
+              <h2 id="profile-display-name">Loading...</h2>
+              <p id="profile-display-email">Loading...</p>
+              <div class="profile-stats">
+                <div class="stat">
+                  <span class="stat-number" id="videos-count">0</span>
+                  <span class="stat-label">Videos</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-number" id="followers-count">0</span>
+                  <span class="stat-label">Followers</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-number" id="following-count">0</span>
+                  <span class="stat-label">Following</span>
+                </div>
+                <div class="stat">
+                  <span class="stat-number" id="total-views">0</span>
+                  <span class="stat-label">Total Views</span>
+                </div>
+              </div>
             </div>
-          </div>
-
-          <div class="settings-section">
-            <h3>Account Settings</h3>
-            
-            <form id="update-profile" class="settings-form">
-              <div class="form-group">
-                <label for="update-username">Username</label>
-                <input id="update-username" type="text" placeholder="Enter username" required>
-              </div>
-              
-              <div class="form-group">
-                <label for="update-email">Email</label>
-                <input id="update-email" type="email" placeholder="Enter email" disabled>
-                <small class="form-help">Email cannot be changed</small>
-              </div>
-              
-              <button class="btn primary" type="submit">Update Profile</button>
-            </form>
-
-            <div class="settings-divider"></div>
-
-            <h3>Change Password</h3>
-            <form id="change-password" class="settings-form">
-              <div class="form-group">
-                <label for="current-pass">Current Password</label>
-                <input id="current-pass" type="password" placeholder="Enter current password" required>
-              </div>
-              
-              <div class="form-group">
-                <label for="new-pass">New Password</label>
-                <input id="new-pass" type="password" placeholder="Enter new password" minlength="6" required>
-              </div>
-              
-              <div class="form-group">
-                <label for="confirm-pass">Confirm New Password</label>
-                <input id="confirm-pass" type="password" placeholder="Confirm new password" minlength="6" required>
-              </div>
-              
-              <button class="btn primary" type="submit">Change Password</button>
-            </form>
           </div>
         </div>
 
+        <!-- Profile Settings -->
+        <div class="settings-container">
+          <!-- Basic Information -->
+          <div class="settings-section">
+            <h3>Basic Information</h3>
+            <form id="update-profile-form">
+              <div class="form-group">
+                <label for="update-username">Username</label>
+                <input 
+                  id="update-username" 
+                  type="text" 
+                  placeholder="Enter username" 
+                  required 
+                  minlength="3"
+                  maxlength="30"
+                  pattern="[a-zA-Z0-9_]+"
+                >
+                <small class="form-help">3-30 characters. Letters, numbers, and underscores only.</small>
+              </div>
+
+              <div class="form-group">
+                <label for="update-fullname">Full Name</label>
+                <input 
+                  id="update-fullname" 
+                  type="text" 
+                  placeholder="Enter your full name" 
+                  maxlength="100"
+                >
+              </div>
+
+              <div class="form-group">
+                <label for="update-bio">Bio</label>
+                <textarea 
+                  id="update-bio" 
+                  placeholder="Tell us about yourself..." 
+                  rows="3"
+                  maxlength="500"
+                ></textarea>
+                <small class="char-count" id="bio-char-count">0/500</small>
+              </div>
+
+              <div class="form-group">
+                <label for="update-instagram">Instagram Handle</label>
+                <input 
+                  id="update-instagram" 
+                  type="text" 
+                  placeholder="@yourusername" 
+                  maxlength="50"
+                >
+              </div>
+
+              <div class="form-group">
+                <label for="update-website">Website URL</label>
+                <input 
+                  id="update-website" 
+                  type="url" 
+                  placeholder="https://your-website.com"
+                >
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn primary">Update Profile</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Account Security -->
+          <div class="settings-section">
+            <h3>Account Security</h3>
+            <form id="change-password-form">
+              <div class="form-group">
+                <label for="current-password">Current Password</label>
+                <input 
+                  id="current-password" 
+                  type="password" 
+                  placeholder="Enter current password" 
+                  required
+                  minlength="6"
+                >
+              </div>
+
+              <div class="form-group">
+                <label for="new-password">New Password</label>
+                <input 
+                  id="new-password" 
+                  type="password" 
+                  placeholder="Enter new password" 
+                  required
+                  minlength="6"
+                >
+              </div>
+
+              <div class="form-group">
+                <label for="confirm-password">Confirm New Password</label>
+                <input 
+                  id="confirm-password" 
+                  type="password" 
+                  placeholder="Confirm new password" 
+                  required
+                  minlength="6"
+                >
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="btn secondary">Change Password</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Account Settings -->
+          <div class="settings-section">
+            <h3>Privacy Settings</h3>
+            <div class="settings-options">
+              <div class="setting-item">
+                <label class="setting-label">
+                  <input type="checkbox" id="profile-public" checked>
+                  <span class="setting-text">
+                    <strong>Public Profile</strong>
+                    <small>Allow others to find and view your profile</small>
+                  </span>
+                </label>
+              </div>
+
+              <div class="setting-item">
+                <label class="setting-label">
+                  <input type="checkbox" id="allow-requests" checked>
+                  <span class="setting-text">
+                    <strong>Allow Secret Requests</strong>
+                    <small>Let others request access to your secret content</small>
+                  </span>
+                </label>
+              </div>
+            </div>
+            
+            <div class="form-actions">
+              <button type="button" class="btn secondary" id="save-privacy-settings">Save Privacy Settings</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Success/Error Messages -->
         <div id="profile-message" class="message"></div>
       </div>
     </main>
   </div>
 
-  <!-- libs -->
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
   <script src="config.js"></script>
   <script src="dashboard.js"></script>

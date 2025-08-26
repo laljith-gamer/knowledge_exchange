@@ -124,11 +124,11 @@
         <div class="modal-content">
           <div class="modal-header">
             <h3>Request Access to Secret</h3>
-            <button class="close-modal">&times;</button>
+            <button class="close-modal" type="button">&times;</button>
           </div>
           <div class="modal-body">
             <div class="requester-info">
-              <div class="user-avatar">👤</div>
+              <div class="user-avatar" id="modal-avatar">👤</div>
               <div>
                 <h4 id="modal-username">Your Username</h4>
                 <p>Wants to learn this secret technique</p>
@@ -137,31 +137,41 @@
             
             <form id="request-form">
               <div class="form-group">
-                <label>Why do you want to learn this?</label>
-                <textarea id="request-reason" placeholder="Explain why you're interested in this secret..." required></textarea>
+                <label for="request-reason">Why do you want to learn this?</label>
+                <textarea 
+                  id="request-reason" 
+                  placeholder="Explain why you're interested in this secret..." 
+                  rows="3"
+                  required
+                ></textarea>
               </div>
               
               <div class="form-group">
                 <label>What can you offer in return?</label>
                 <div class="offer-options">
                   <label class="offer-option">
-                    <input type="radio" name="offer-type" value="skill">
+                    <input type="radio" name="offer-type" value="skill" required>
                     <span>🎯 Share my skill</span>
                   </label>
                   <label class="offer-option">
-                    <input type="radio" name="offer-type" value="payment">
+                    <input type="radio" name="offer-type" value="payment" required>
                     <span>💰 Payment</span>
                   </label>
                   <label class="offer-option">
-                    <input type="radio" name="offer-type" value="favor">
+                    <input type="radio" name="offer-type" value="favor" required>
                     <span>🤝 Future favor</span>
                   </label>
                   <label class="offer-option">
-                    <input type="radio" name="offer-type" value="collaboration">
+                    <input type="radio" name="offer-type" value="collaboration" required>
                     <span>🤝 Collaboration</span>
                   </label>
                 </div>
-                <textarea id="offer-details" placeholder="Describe your offer..." required></textarea>
+                <textarea 
+                  id="offer-details" 
+                  placeholder="Describe your offer in detail..." 
+                  rows="3"
+                  required
+                ></textarea>
               </div>
               
               <div class="modal-actions">
@@ -173,6 +183,45 @@
         </div>
       </div>
 
+      <!-- Comments Modal -->
+      <div id="comments-modal" class="modal hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Comments</h3>
+            <button class="close-modal" type="button">&times;</button>
+          </div>
+          <div class="modal-body">
+            <!-- Add Comment Form -->
+            <div class="add-comment-section">
+              <form id="comment-form">
+                <div class="comment-input-wrapper">
+                  <div class="user-avatar" id="comment-user-avatar">👤</div>
+                  <textarea 
+                    id="comment-input" 
+                    placeholder="Share your thoughts..." 
+                    rows="2"
+                    maxlength="500"
+                    required
+                  ></textarea>
+                </div>
+                <div class="comment-actions">
+                  <span class="char-count" id="comment-char-count">0/500</span>
+                  <button type="submit" class="btn primary small">Post Comment</button>
+                </div>
+              </form>
+            </div>
+
+            <!-- Comments List -->
+            <div class="comments-list" id="comments-list">
+              <div class="loading-comments">
+                <div class="loading-spinner small"></div>
+                <p>Loading comments...</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <!-- Notifications Panel -->
       <div id="notifications-panel" class="notifications-panel hidden">
         <div class="panel-header">
@@ -180,7 +229,8 @@
           <button class="close-panel">&times;</button>
         </div>
         <div class="notifications-list" id="notifications-list">
-          <!-- Notifications will be loaded here -->
+          <div class="loading-spinner"></div>
+          <p>Loading notifications...</p>
         </div>
       </div>
     </main>

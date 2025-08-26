@@ -8,6 +8,7 @@ let uploadStartTime = null;
 let isUploading = false;
 let currentFilter = "all";
 let currentCategory = "";
+let currentVideoIdForComments = null;
 
 /* ---------- HELPER FUNCTIONS ---------- */
 const $ = (id) => document.getElementById(id);
@@ -107,6 +108,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (window.location.pathname.includes("createone.html")) {
       initializeUploadForm();
     }
+
+    if (window.location.pathname.includes("profile.html")) {
+      loadUserProfileData();
+    }
   } catch (error) {
     console.error("Initialization error:", error);
     window.location.href = "index.html";
@@ -138,6 +143,7 @@ async function loadUserProfile(user) {
     const profileEmail = $("profile-email");
     const profileDate = $("profile-date");
     const modalUsername = $("modal-username");
+    const modalAvatar = $("modal-avatar");
 
     if (profileName) profileName.textContent = username;
     if (profileEmail) profileEmail.textContent = user.email;
@@ -146,19 +152,82 @@ async function loadUserProfile(user) {
     if (modalUsername) modalUsername.textContent = username;
 
     // Update avatars
-    document.querySelectorAll(".user-avatar").forEach((avatar) => {
-      if (!avatar.textContent || avatar.textContent === "👤") {
-        avatar.textContent = username.charAt(0).toUpperCase();
-      }
-    });
-
-    // Update form fields if on profile page
-    const updateUsername = $("update-username");
-    const updateEmail = $("update-email");
-    if (updateUsername) updateUsername.value = username;
-    if (updateEmail) updateEmail.value = user.email;
+    document
+      .querySelectorAll(
+        ".user-avatar, #modal-avatar, #comment-user-avatar, #profile-avatar"
+      )
+      .forEach((avatar) => {
+        if (avatar) {
+          avatar.textContent = username.charAt(0).toUpperCase();
+        }
+      });
   } catch (error) {
     console.error("Load profile error:", error);
+  }
+}
+
+async function loadUserProfileData() {
+  try {
+    const { data: profile, error } = await sb
+      .from("profiles")
+      .select("*")
+      .eq("id", currentUser.id)
+      .single();
+
+    if (error && error.code !== "PGRST116") throw error;
+
+    if (profile) {
+      // Update form fields
+      if ($("update-username"))
+        $("update-username").value = profile.username || "";
+      if ($("update-fullname"))
+        $("update-fullname").value = profile.full_name || "";
+      if ($("update-bio")) $("update-bio").value = profile.bio || "";
+      if ($("update-instagram"))
+        $("update-instagram").value = profile.instagram_handle || "";
+      if ($("update-website"))
+        $("update-website").value = profile.website_url || "";
+
+      // Update display elements
+      if ($("profile-display-name"))
+        $("profile-display-name").textContent =
+          profile.username || "Unknown User";
+      if ($("profile-display-email"))
+        $("profile-display-email").textContent = currentUser.email;
+
+      // Update stats
+      if ($("videos-count"))
+        $("videos-count").textContent = profile.videos_count || 0;
+      if ($("followers-count"))
+        $("followers-count").textContent = profile.followers_count || 0;
+      if ($("following-count"))
+        $("following-count").textContent = profile.following_count || 0;
+      if ($("total-views"))
+        $("total-views").textContent = profile.total_views || 0;
+
+      // Update privacy settings
+      if ($("profile-public"))
+        $("profile-public").checked = profile.is_public !== false;
+      if ($("allow-requests"))
+        $("allow-requests").checked = profile.allow_requests !== false;
+
+      // Update avatar
+      const avatars = document.querySelectorAll(
+        "#profile-avatar, #modal-avatar, #comment-user-avatar"
+      );
+      avatars.forEach((avatar) => {
+        if (avatar) {
+          avatar.textContent = (profile.username || "U")
+            .charAt(0)
+            .toUpperCase();
+        }
+      });
+
+      updateBioCharCount();
+    }
+  } catch (error) {
+    console.error("Error loading profile data:", error);
+    showMessage("profile-message", "Error loading profile data", "error");
   }
 }
 
@@ -214,15 +283,27 @@ function bindDashboardEvents() {
 
   // Modal events
   const requestModal = $("request-modal");
-  const closeModal = requestModal?.querySelector(".close-modal");
+  const closeModals = document.querySelectorAll(".close-modal");
   const cancelRequest = $("cancel-request");
   const requestForm = $("request-form");
 
-  if (closeModal)
-    closeModal.onclick = () => requestModal.classList.add("hidden");
+  closeModals.forEach((btn) => {
+    btn.onclick = () => {
+      const modal = btn.closest(".modal");
+      if (modal) modal.classList.add("hidden");
+    };
+  });
+
   if (cancelRequest)
-    cancelRequest.onclick = () => requestModal.classList.add("hidden");
+    cancelRequest.onclick = () => requestModal?.classList.add("hidden");
   if (requestForm) requestForm.onsubmit = handleSecretRequest;
+
+  // Comment functionality
+  const commentForm = $("comment-form");
+  if (commentForm) commentForm.onsubmit = handleCommentSubmit;
+
+  const commentInput = $("comment-input");
+  if (commentInput) commentInput.oninput = updateCommentCharCount;
 
   // Upload form events
   const uploadForm = $("upload-form");
@@ -231,12 +312,18 @@ function bindDashboardEvents() {
   const saveDraftBtn = $("save-draft");
   if (saveDraftBtn) saveDraftBtn.onclick = saveDraft;
 
-  // Profile forms
-  const updateProfileForm = $("update-profile");
-  if (updateProfileForm) updateProfileForm.onsubmit = updateProfile;
+  // Profile functionality
+  const updateProfileForm = $("update-profile-form");
+  if (updateProfileForm) updateProfileForm.onsubmit = handleProfileUpdate;
 
-  const changePasswordForm = $("change-password");
-  if (changePasswordForm) changePasswordForm.onsubmit = changePassword;
+  const changePasswordForm = $("change-password-form");
+  if (changePasswordForm) changePasswordForm.onsubmit = handlePasswordChange;
+
+  const savePrivacyBtn = $("save-privacy-settings");
+  if (savePrivacyBtn) savePrivacyBtn.onclick = handlePrivacySettings;
+
+  const bioInput = $("update-bio");
+  if (bioInput) bioInput.oninput = updateBioCharCount;
 
   // Close modal when clicking outside
   window.addEventListener("click", (e) => {
@@ -257,7 +344,6 @@ function initializeUploadForm() {
   const titleInput = $("video-title");
   const descInput = $("video-description");
   const previewInput = $("secret-preview");
-  const tagsInput = $("tags");
 
   if (titleInput)
     titleInput.addEventListener("input", () =>
@@ -293,12 +379,14 @@ function initializeUploadForm() {
   // Access type change handler
   accessTypeInputs.forEach((input) => {
     input.addEventListener("change", (e) => {
-      if (e.target.value === "paid") {
+      if (e.target.value === "paid" && priceGroup) {
         priceGroup.style.display = "block";
-        $("price").required = true;
-      } else {
+        const priceInput = $("price");
+        if (priceInput) priceInput.required = true;
+      } else if (priceGroup) {
         priceGroup.style.display = "none";
-        $("price").required = false;
+        const priceInput = $("price");
+        if (priceInput) priceInput.required = false;
       }
     });
   });
@@ -323,9 +411,10 @@ async function loadVideoFeed() {
 
   try {
     if (loading) loading.style.display = "block";
-    if (feedPosts && videosLoaded === 0)
+    if (feedPosts && videosLoaded === 0) {
       feedPosts.innerHTML =
         '<div id="loading" class="loading-container"><div class="loading-spinner"></div><p>Loading knowledge feed...</p></div>';
+    }
 
     // Build query based on filters
     let query = sb
@@ -381,13 +470,13 @@ async function loadVideoFeed() {
     if (loading) loading.style.display = "none";
 
     if (videos && videos.length > 0) {
-      if (videosLoaded === 0) {
+      if (videosLoaded === 0 && feedPosts) {
         feedPosts.innerHTML = "";
       }
 
       for (const video of videos) {
         const videoCard = await createVideoCard(video);
-        feedPosts.appendChild(videoCard);
+        if (feedPosts) feedPosts.appendChild(videoCard);
       }
 
       videosLoaded += videos.length;
@@ -396,7 +485,7 @@ async function loadVideoFeed() {
         loadMoreBtn.style.display =
           videos.length < videosPerPage ? "none" : "block";
       }
-    } else if (videosLoaded === 0) {
+    } else if (videosLoaded === 0 && feedPosts) {
       feedPosts.innerHTML = `
         <div class="no-videos">
           <p>No videos found for the selected filters. 🔍</p>
@@ -561,6 +650,7 @@ async function createVideoCard(video) {
   const requestBtn = card.querySelector(".double-tap-btn");
   const likeBtn = card.querySelector(".like-btn");
   const shareBtn = card.querySelector(".share-btn");
+  const commentBtn = card.querySelector(".comment-btn");
   const videoElement = card.querySelector("video");
 
   if (requestBtn) {
@@ -575,6 +665,10 @@ async function createVideoCard(video) {
     shareBtn.onclick = () => shareVideo(video);
   }
 
+  if (commentBtn) {
+    commentBtn.onclick = () => showCommentsModal(video.id);
+  }
+
   if (videoElement) {
     videoElement.onplay = () => incrementViews(video.id);
   }
@@ -582,7 +676,234 @@ async function createVideoCard(video) {
   return card;
 }
 
-/* ---------- SECRET REQUEST FUNCTIONALITY (UPDATED) ---------- */
+/* ---------- COMMENTS FUNCTIONALITY ---------- */
+function showCommentsModal(videoId) {
+  currentVideoIdForComments = videoId;
+  const modal = $("comments-modal");
+  if (modal) {
+    modal.classList.remove("hidden");
+    loadVideoComments(videoId);
+
+    // Update user avatar in comment form
+    const commentAvatar = $("comment-user-avatar");
+    if (commentAvatar && currentUser) {
+      const username = currentUser.user_metadata?.username || "U";
+      commentAvatar.textContent = username.charAt(0).toUpperCase();
+    }
+  }
+}
+
+async function loadVideoComments(videoId) {
+  const commentsList = $("comments-list");
+  if (!commentsList) return;
+
+  try {
+    commentsList.innerHTML = `
+      <div class="loading-comments">
+        <div class="loading-spinner small"></div>
+        <p>Loading comments...</p>
+      </div>
+    `;
+
+    const { data: comments, error } = await sb.rpc("get_video_comments", {
+      p_video_id: videoId,
+      p_limit: 50,
+      p_offset: 0,
+    });
+
+    if (error) {
+      // Fallback to direct query if RPC doesn't exist
+      const { data: fallbackComments, error: fallbackError } = await sb
+        .from("video_comments")
+        .select(
+          `
+          *,
+          profiles:user_id (
+            username,
+            full_name,
+            avatar_url
+          )
+        `
+        )
+        .eq("video_id", videoId)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (fallbackError) throw fallbackError;
+
+      const formattedComments = fallbackComments.map((comment) => ({
+        ...comment,
+        user_info: {
+          username: comment.profiles?.username,
+          full_name: comment.profiles?.full_name,
+          avatar_url: comment.profiles?.avatar_url,
+        },
+      }));
+
+      renderComments(formattedComments);
+    } else {
+      renderComments(comments || []);
+    }
+  } catch (error) {
+    console.error("Error loading comments:", error);
+    commentsList.innerHTML = `
+      <div class="error-comments">
+        <p>Failed to load comments. Please try again.</p>
+        <button onclick="loadVideoComments('${videoId}')" class="btn secondary small">Retry</button>
+      </div>
+    `;
+  }
+}
+
+function renderComments(comments) {
+  const commentsList = $("comments-list");
+  if (!commentsList) return;
+
+  if (comments.length > 0) {
+    commentsList.innerHTML = comments
+      .map((comment) => createCommentHTML(comment))
+      .join("");
+  } else {
+    commentsList.innerHTML = `
+      <div class="no-comments">
+        <p>No comments yet. Be the first to comment!</p>
+      </div>
+    `;
+  }
+}
+
+function createCommentHTML(comment) {
+  const userInfo = comment.user_info || {};
+  const username = userInfo.username || userInfo.full_name || "Unknown User";
+  const avatarLetter = username.charAt(0).toUpperCase();
+  const timeAgo = getTimeAgo(new Date(comment.created_at));
+
+  return `
+    <div class="comment-item" data-comment-id="${comment.id}">
+      <div class="comment-header">
+        <div class="user-avatar small">${avatarLetter}</div>
+        <div class="comment-meta">
+          <span class="comment-username">${username}</span>
+          <span class="comment-time">${timeAgo}</span>
+        </div>
+      </div>
+      <div class="comment-content">
+        <p>${comment.content}</p>
+      </div>
+      <div class="comment-actions">
+        <button class="comment-action-btn" onclick="likeComment('${
+          comment.id
+        }')">
+          <span>❤️</span>
+          <span>${comment.likes_count || 0}</span>
+        </button>
+        <button class="comment-action-btn" onclick="replyToComment('${
+          comment.id
+        }')">
+          <span>💬</span>
+          <span>Reply</span>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+async function handleCommentSubmit(e) {
+  e.preventDefault();
+
+  const commentInput = $("comment-input");
+  if (!commentInput) return;
+
+  const content = commentInput.value.trim();
+
+  if (!content) {
+    showMessage("profile-message", "Please enter a comment", "error");
+    return;
+  }
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Posting...";
+  }
+
+  try {
+    // Try RPC function first
+    let result;
+    try {
+      const { data: rpcResult, error: rpcError } = await sb.rpc(
+        "add_video_comment",
+        {
+          p_user_id: currentUser.id,
+          p_video_id: currentVideoIdForComments,
+          p_content: content,
+          p_parent_comment_id: null,
+        }
+      );
+
+      if (rpcError) throw rpcError;
+      result = rpcResult;
+    } catch (rpcError) {
+      // Fallback to direct insert
+      const { data: insertResult, error: insertError } = await sb
+        .from("video_comments")
+        .insert({
+          user_id: currentUser.id,
+          video_id: currentVideoIdForComments,
+          content: content,
+          parent_comment_id: null,
+        })
+        .select()
+        .single();
+
+      if (insertError) throw insertError;
+      result = { success: true, comment_id: insertResult.id };
+    }
+
+    if (result && result.success !== false) {
+      commentInput.value = "";
+      updateCommentCharCount();
+      loadVideoComments(currentVideoIdForComments);
+      showMessage(
+        "profile-message",
+        "Comment posted successfully! 💬",
+        "success"
+      );
+    } else {
+      showMessage(
+        "profile-message",
+        result?.message || "Failed to post comment",
+        "error"
+      );
+    }
+  } catch (error) {
+    console.error("Error posting comment:", error);
+    showMessage(
+      "profile-message",
+      "Failed to post comment. Please try again.",
+      "error"
+    );
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Post Comment";
+    }
+  }
+}
+
+function updateCommentCharCount() {
+  const commentInput = $("comment-input");
+  const charCount = $("comment-char-count");
+
+  if (commentInput && charCount) {
+    const length = commentInput.value.length;
+    charCount.textContent = `${length}/500`;
+    charCount.style.color =
+      length > 450 ? "var(--warning-color)" : "var(--muted-text)";
+  }
+}
+
+/* ---------- SECRET REQUEST FUNCTIONALITY ---------- */
 async function showRequestModal(videoId) {
   try {
     // Check if user already has a pending/approved request
@@ -599,7 +920,7 @@ async function showRequestModal(videoId) {
           ? "Your request is pending approval"
           : `Your request was ${existingRequest.status}`;
 
-      showMessage("upload-message", statusText, "info");
+      showMessage("profile-message", statusText, "info");
       return;
     }
 
@@ -625,7 +946,7 @@ async function showRequestModal(videoId) {
       }
     } else {
       console.error("Error checking existing request:", error);
-      showMessage("upload-message", "Error checking request status", "error");
+      showMessage("profile-message", "Error checking request status", "error");
     }
   }
 }
@@ -634,21 +955,30 @@ async function handleSecretRequest(e) {
   e.preventDefault();
 
   const modal = $("request-modal");
+  if (!modal) return;
+
   const videoId = modal.dataset.videoId;
-  const reason = $("request-reason").value.trim();
+  const reasonInput = $("request-reason");
+  const offerDetailsInput = $("offer-details");
+
+  if (!reasonInput || !offerDetailsInput) return;
+
+  const reason = reasonInput.value.trim();
   const offerType = document.querySelector(
     'input[name="offer-type"]:checked'
   )?.value;
-  const offerDetails = $("offer-details").value.trim();
+  const offerDetails = offerDetailsInput.value.trim();
 
   if (!reason || !offerType || !offerDetails) {
-    showMessage("upload-message", "Please fill in all fields", "error");
+    showMessage("profile-message", "Please fill in all fields", "error");
     return;
   }
 
   const submitBtn = e.target.querySelector('button[type="submit"]');
-  submitBtn.disabled = true;
-  submitBtn.textContent = "Sending...";
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Sending...";
+  }
 
   try {
     // Get creator ID for the video
@@ -661,8 +991,9 @@ async function handleSecretRequest(e) {
     if (videoError) throw videoError;
 
     // Use the safe RPC function (if available) or direct insert with conflict handling
+    let result;
     try {
-      const { data: result, error: rpcError } = await sb.rpc(
+      const { data: rpcResult, error: rpcError } = await sb.rpc(
         "add_secret_request",
         {
           p_requester_id: currentUser.id,
@@ -675,25 +1006,9 @@ async function handleSecretRequest(e) {
       );
 
       if (rpcError) throw rpcError;
-
-      // Handle RPC response
-      if (result && typeof result === "object") {
-        if (result.success) {
-          modal.classList.add("hidden");
-          showMessage("upload-message", result.message, "success");
-        } else {
-          showMessage("upload-message", result.message, "warning");
-        }
-      } else {
-        // RPC function doesn't return detailed response, assume success
-        modal.classList.add("hidden");
-        showMessage(
-          "upload-message",
-          "Request sent successfully! 🎉",
-          "success"
-        );
-      }
+      result = rpcResult;
     } catch (rpcError) {
+      console.log("RPC failed, trying direct insert:", rpcError);
       // Fallback to direct insert if RPC function doesn't exist
       const { error: insertError } = await sb.from("secret_requests").insert({
         video_id: videoId,
@@ -707,66 +1022,77 @@ async function handleSecretRequest(e) {
       if (insertError) {
         if (insertError.code === "23505") {
           // Duplicate key error
-          showMessage(
-            "upload-message",
-            "You have already requested access to this video",
-            "warning"
-          );
+          result = {
+            success: false,
+            message: "You have already requested access to this video",
+          };
         } else {
           throw insertError;
         }
       } else {
-        modal.classList.add("hidden");
-        showMessage(
-          "upload-message",
-          "Request sent successfully! 🎉",
-          "success"
-        );
+        result = { success: true, message: "Request sent successfully!" };
       }
     }
 
-    // Reset form
-    $("request-reason").value = "";
-    $("offer-details").value = "";
-    const checkedRadio = document.querySelector(
-      'input[name="offer-type"]:checked'
-    );
-    if (checkedRadio) checkedRadio.checked = false;
+    // Handle response
+    if (result && result.success !== false) {
+      modal.classList.add("hidden");
+      showMessage(
+        "profile-message",
+        result.message || "Request sent successfully! 🎉",
+        "success"
+      );
 
-    // Reload the feed to update request counts
-    videosLoaded = 0;
-    loadVideoFeed();
+      // Reset form
+      reasonInput.value = "";
+      offerDetailsInput.value = "";
+      const checkedRadio = document.querySelector(
+        'input[name="offer-type"]:checked'
+      );
+      if (checkedRadio) checkedRadio.checked = false;
+
+      // Reload the feed to update request counts
+      videosLoaded = 0;
+      loadVideoFeed();
+    } else {
+      showMessage(
+        "profile-message",
+        result?.message || "You have already requested access to this video",
+        "warning"
+      );
+      setTimeout(() => modal.classList.add("hidden"), 2000);
+    }
   } catch (error) {
     console.error("Request error:", error);
 
     // Handle specific error cases
     if (error.code === "23505") {
       showMessage(
-        "upload-message",
+        "profile-message",
         "You have already requested access to this video",
         "warning"
       );
     } else if (error.message && error.message.includes("duplicate")) {
       showMessage(
-        "upload-message",
+        "profile-message",
         "You have already requested access to this video",
         "warning"
       );
     } else {
       showMessage(
-        "upload-message",
+        "profile-message",
         "Failed to send request. Please try again.",
         "error"
       );
     }
 
     // Close modal after error
-    setTimeout(() => {
-      modal.classList.add("hidden");
-    }, 2000);
+    setTimeout(() => modal.classList.add("hidden"), 2000);
   } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = "Send Request";
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Send Request";
+    }
   }
 }
 
@@ -788,8 +1114,10 @@ function handleDrop(e) {
   const files = e.dataTransfer.files;
   if (files.length > 0) {
     const fileInput = $("video-file");
-    fileInput.files = files;
-    handleVideoSelect({ target: fileInput });
+    if (fileInput) {
+      fileInput.files = files;
+      handleVideoSelect({ target: fileInput });
+    }
   }
 }
 
@@ -821,42 +1149,50 @@ function handleVideoSelect(e) {
   );
 
   const preview = $("video-preview");
-  const video = preview.querySelector("video");
   const uploadArea = $("video-upload-area");
 
-  try {
-    video.src = URL.createObjectURL(file);
-    preview.classList.remove("hidden");
-    uploadArea.style.display = "none";
+  if (preview && uploadArea) {
+    const video = preview.querySelector("video");
+    if (video) {
+      try {
+        video.src = URL.createObjectURL(file);
+        preview.classList.remove("hidden");
+        uploadArea.style.display = "none";
 
-    // Auto-fill title if empty
-    const titleInput = $("video-title");
-    if (titleInput && !titleInput.value.trim()) {
-      const fileName = file.name.replace(/\.[^/.]+$/, "");
-      titleInput.value = fileName.replace(/[_-]/g, " ");
-      updateCharCount("video-title", 200);
+        // Auto-fill title if empty
+        const titleInput = $("video-title");
+        if (titleInput && !titleInput.value.trim()) {
+          const fileName = file.name.replace(/\.[^/.]+$/, "");
+          titleInput.value = fileName.replace(/[_-]/g, " ");
+          updateCharCount("video-title", 200);
+        }
+      } catch (error) {
+        console.error("Error creating video preview:", error);
+        showMessage("upload-message", "Error creating video preview", "error");
+      }
     }
-  } catch (error) {
-    console.error("Error creating video preview:", error);
-    showMessage("upload-message", "Error creating video preview", "error");
   }
 }
 
 function removeVideoPreview() {
   const preview = $("video-preview");
-  const video = preview.querySelector("video");
   const uploadArea = $("video-upload-area");
   const fileInput = $("video-file");
 
-  if (video.src && video.src.startsWith("blob:")) {
-    URL.revokeObjectURL(video.src);
-  }
+  if (preview && uploadArea && fileInput) {
+    const video = preview.querySelector("video");
+    if (video) {
+      if (video.src && video.src.startsWith("blob:")) {
+        URL.revokeObjectURL(video.src);
+      }
+      video.src = "";
+    }
 
-  video.src = "";
-  preview.classList.add("hidden");
-  uploadArea.style.display = "block";
-  fileInput.value = "";
-  showMessage("upload-message", "", "");
+    preview.classList.add("hidden");
+    uploadArea.style.display = "block";
+    fileInput.value = "";
+    showMessage("upload-message", "", "");
+  }
 }
 
 async function uploadVideo(e) {
@@ -868,27 +1204,17 @@ async function uploadVideo(e) {
   }
 
   const fileInput = $("video-file");
-  const title = $("video-title").value.trim();
-  const description = $("video-description").value.trim();
-  const secretPreview = $("secret-preview")?.value.trim() || "";
-  const category = $("category").value;
-  const isSecret = $("is-secret")?.checked || false;
-  const accessType =
-    document.querySelector('input[name="access-type"]:checked')?.value ||
-    "free";
-  const price = $("price")?.value;
-  const tags = $("tags")
-    ?.value.split(",")
-    .map((tag) => tag.trim())
-    .filter((tag) => tag);
-  const instagramLink = $("instagram-link")?.value.trim();
-  const duration = parseInt($("duration")?.value) || 0;
+  const titleInput = $("video-title");
+  const descInput = $("video-description");
+  const categoryInput = $("category");
 
-  // Validation
-  if (!fileInput.files[0]) {
+  if (!fileInput?.files[0]) {
     showMessage("upload-message", "Please select a video file", "error");
     return;
   }
+
+  const title = titleInput?.value.trim();
+  const category = categoryInput?.value;
 
   if (!title || !category) {
     showMessage(
@@ -899,6 +1225,27 @@ async function uploadVideo(e) {
     return;
   }
 
+  const description = descInput?.value.trim();
+  const secretPreviewInput = $("secret-preview");
+  const secretPreview = secretPreviewInput?.value.trim() || "";
+  const isSecretInput = $("is-secret");
+  const isSecret = isSecretInput?.checked || false;
+  const accessType =
+    document.querySelector('input[name="access-type"]:checked')?.value ||
+    "free";
+  const priceInput = $("price");
+  const price = priceInput?.value;
+  const tagsInput = $("tags");
+  const tags = tagsInput?.value
+    .split(",")
+    .map((tag) => tag.trim())
+    .filter((tag) => tag);
+  const instagramInput = $("instagram-link");
+  const instagramLink = instagramInput?.value.trim();
+  const durationInput = $("duration");
+  const duration = parseInt(durationInput?.value) || 0;
+
+  // Validation
   if (isSecret && !secretPreview) {
     showMessage(
       "upload-message",
@@ -928,10 +1275,12 @@ async function uploadVideo(e) {
     isUploading = true;
     uploadStartTime = Date.now();
 
-    uploadBtn.disabled = true;
-    saveDraftBtn.disabled = true;
-    uploadBtn.textContent = "Uploading...";
-    progressSection.style.display = "block";
+    if (uploadBtn) {
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = "Uploading...";
+    }
+    if (saveDraftBtn) saveDraftBtn.disabled = true;
+    if (progressSection) progressSection.style.display = "block";
 
     // Create unique filename
     const fileExt = file.name.split(".").pop().toLowerCase();
@@ -940,8 +1289,8 @@ async function uploadVideo(e) {
     const fileName = `video_${timestamp}_${randomId}.${fileExt}`;
     const filePath = `${currentUser.id}/${fileName}`;
 
-    progressStatus.textContent = "Uploading video...";
-    progressBar.style.width = "0%";
+    if (progressStatus) progressStatus.textContent = "Uploading video...";
+    if (progressBar) progressBar.style.width = "0%";
 
     // Upload video to storage
     const { data: uploadData, error: uploadError } = await sb.storage
@@ -951,22 +1300,23 @@ async function uploadVideo(e) {
         upsert: false,
         onUploadProgress: (progress) => {
           const percent = Math.round((progress.loaded / progress.total) * 100);
-          progressBar.style.width = `${percent}%`;
-          progressStatus.textContent = `Uploading: ${percent}%`;
+          if (progressBar) progressBar.style.width = `${percent}%`;
+          if (progressStatus)
+            progressStatus.textContent = `Uploading: ${percent}%`;
         },
       });
 
     if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-    progressStatus.textContent = "Processing video...";
-    progressBar.style.width = "95%";
+    if (progressStatus) progressStatus.textContent = "Processing video...";
+    if (progressBar) progressBar.style.width = "95%";
 
     // Get public URL
     const { data: urlData } = sb.storage.from("videos").getPublicUrl(filePath);
     if (!urlData?.publicUrl) throw new Error("Failed to get video URL");
 
-    progressStatus.textContent = "Saving video details...";
-    progressBar.style.width = "98%";
+    if (progressStatus) progressStatus.textContent = "Saving video details...";
+    if (progressBar) progressBar.style.width = "98%";
 
     // Save video to database
     const { data: videoData, error: dbError } = await sb
@@ -991,8 +1341,8 @@ async function uploadVideo(e) {
 
     if (dbError) throw new Error(`Database error: ${dbError.message}`);
 
-    progressBar.style.width = "100%";
-    progressStatus.textContent = "Upload complete!";
+    if (progressBar) progressBar.style.width = "100%";
+    if (progressStatus) progressStatus.textContent = "Upload complete!";
 
     const uploadTime = Math.round((Date.now() - uploadStartTime) / 1000);
     showMessage(
@@ -1014,16 +1364,312 @@ async function uploadVideo(e) {
     );
   } finally {
     isUploading = false;
-    uploadBtn.disabled = false;
-    saveDraftBtn.disabled = false;
-    uploadBtn.textContent = "🚀 Share Secret";
+    if (uploadBtn) {
+      uploadBtn.disabled = false;
+      uploadBtn.textContent = "🚀 Share Secret";
+    }
+    if (saveDraftBtn) saveDraftBtn.disabled = false;
 
     setTimeout(() => {
       if (progressSection && progressSection.style.display !== "none") {
         progressSection.style.display = "none";
-        progressBar.style.width = "0%";
+        if (progressBar) progressBar.style.width = "0%";
       }
     }, 3000);
+  }
+}
+
+/* ---------- PROFILE UPDATE FUNCTIONALITY ---------- */
+async function handleProfileUpdate(e) {
+  e.preventDefault();
+
+  const usernameInput = $("update-username");
+  const fullNameInput = $("update-fullname");
+  const bioInput = $("update-bio");
+  const instagramInput = $("update-instagram");
+  const websiteInput = $("update-website");
+
+  if (!usernameInput) return;
+
+  const username = usernameInput.value.trim();
+  const fullName = fullNameInput?.value.trim();
+  const bio = bioInput?.value.trim();
+  const instagram = instagramInput?.value.trim();
+  const website = websiteInput?.value.trim();
+
+  if (!username) {
+    showMessage("profile-message", "Username is required", "error");
+    return;
+  }
+
+  if (username.length < 3 || username.length > 30) {
+    showMessage(
+      "profile-message",
+      "Username must be 3-30 characters long",
+      "error"
+    );
+    return;
+  }
+
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    showMessage(
+      "profile-message",
+      "Username can only contain letters, numbers, and underscores",
+      "error"
+    );
+    return;
+  }
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Updating...";
+  }
+
+  try {
+    // Try RPC function first
+    let result;
+    try {
+      const { data: rpcResult, error: rpcError } = await sb.rpc(
+        "update_user_profile",
+        {
+          p_user_id: currentUser.id,
+          p_username: username,
+          p_full_name: fullName || null,
+          p_bio: bio || null,
+          p_instagram_handle: instagram || null,
+          p_website_url: website || null,
+        }
+      );
+
+      if (rpcError) throw rpcError;
+      result = rpcResult;
+    } catch (rpcError) {
+      // Fallback to direct update
+      console.log("RPC failed, trying direct update:", rpcError);
+
+      // Check if username is already taken
+      const { data: existingProfile } = await sb
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .neq("id", currentUser.id)
+        .single();
+
+      if (existingProfile) {
+        result = { success: false, message: "Username already taken" };
+      } else {
+        // Update profile
+        const { error: updateError } = await sb
+          .from("profiles")
+          .update({
+            username: username,
+            full_name: fullName || null,
+            bio: bio || null,
+            instagram_handle: instagram || null,
+            website_url: website || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", currentUser.id);
+
+        if (updateError) throw updateError;
+
+        // Update auth metadata
+        await sb.auth.updateUser({
+          data: {
+            username: username,
+            full_name: fullName || "",
+          },
+        });
+
+        result = { success: true, message: "Profile updated successfully" };
+      }
+    }
+
+    if (result && result.success) {
+      showMessage(
+        "profile-message",
+        "Profile updated successfully! ✅",
+        "success"
+      );
+
+      // Update the current user metadata
+      currentUser.user_metadata = {
+        ...currentUser.user_metadata,
+        username: username,
+        full_name: fullName,
+      };
+
+      // Reload profile data to update display
+      await loadUserProfileData();
+    } else {
+      showMessage(
+        "profile-message",
+        result?.message || "Failed to update profile",
+        "error"
+      );
+    }
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    showMessage(
+      "profile-message",
+      "Failed to update profile. Please try again.",
+      "error"
+    );
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Update Profile";
+    }
+  }
+}
+
+async function handlePasswordChange(e) {
+  e.preventDefault();
+
+  const currentPasswordInput = $("current-password");
+  const newPasswordInput = $("new-password");
+  const confirmPasswordInput = $("confirm-password");
+
+  if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput)
+    return;
+
+  const currentPassword = currentPasswordInput.value;
+  const newPassword = newPasswordInput.value;
+  const confirmPassword = confirmPasswordInput.value;
+
+  if (newPassword !== confirmPassword) {
+    showMessage("profile-message", "New passwords do not match", "error");
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    showMessage(
+      "profile-message",
+      "Password must be at least 6 characters",
+      "error"
+    );
+    return;
+  }
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Changing...";
+  }
+
+  try {
+    // Verify current password by attempting to sign in
+    const { error: verifyError } = await sb.auth.signInWithPassword({
+      email: currentUser.email,
+      password: currentPassword,
+    });
+
+    if (verifyError) {
+      showMessage("profile-message", "Current password is incorrect", "error");
+      return;
+    }
+
+    // Update password
+    const { error } = await sb.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) throw error;
+
+    showMessage(
+      "profile-message",
+      "Password changed successfully! 🔒",
+      "success"
+    );
+    e.target.reset();
+  } catch (error) {
+    console.error("Error changing password:", error);
+    showMessage(
+      "profile-message",
+      "Failed to change password. Please try again.",
+      "error"
+    );
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Change Password";
+    }
+  }
+}
+
+async function handlePrivacySettings() {
+  const isPublicInput = $("profile-public");
+  const allowRequestsInput = $("allow-requests");
+
+  if (!isPublicInput || !allowRequestsInput) return;
+
+  const isPublic = isPublicInput.checked;
+  const allowRequests = allowRequestsInput.checked;
+
+  try {
+    // Try RPC function first
+    let result;
+    try {
+      const { data: rpcResult, error: rpcError } = await sb.rpc(
+        "update_privacy_settings",
+        {
+          p_user_id: currentUser.id,
+          p_is_public: isPublic,
+          p_allow_requests: allowRequests,
+        }
+      );
+
+      if (rpcError) throw rpcError;
+      result = rpcResult;
+    } catch (rpcError) {
+      // Fallback to direct update
+      console.log("RPC failed, trying direct update:", rpcError);
+
+      const { error: updateError } = await sb
+        .from("profiles")
+        .update({
+          is_public: isPublic,
+          allow_requests: allowRequests,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", currentUser.id);
+
+      if (updateError) throw updateError;
+      result = {
+        success: true,
+        message: "Privacy settings updated successfully",
+      };
+    }
+
+    if (result && result.success) {
+      showMessage("profile-message", "Privacy settings updated! 🛡️", "success");
+    } else {
+      showMessage(
+        "profile-message",
+        result?.message || "Failed to update privacy settings",
+        "error"
+      );
+    }
+  } catch (error) {
+    console.error("Error updating privacy settings:", error);
+    showMessage(
+      "profile-message",
+      "Failed to update privacy settings",
+      "error"
+    );
+  }
+}
+
+function updateBioCharCount() {
+  const bioInput = $("update-bio");
+  const charCount = $("bio-char-count");
+
+  if (bioInput && charCount) {
+    const length = bioInput.value.length;
+    charCount.textContent = `${length}/500`;
+    charCount.style.color =
+      length > 450 ? "var(--warning-color)" : "var(--muted-text)";
   }
 }
 
@@ -1072,7 +1718,7 @@ async function toggleLike(videoId, likeBtn) {
     }
   } catch (error) {
     console.error("Error toggling like:", error);
-    showMessage("upload-message", "Error updating like", "error");
+    showMessage("profile-message", "Error updating like", "error");
   }
 }
 
@@ -1100,10 +1746,14 @@ function shareVideo(video) {
     navigator.clipboard
       .writeText(shareData.url)
       .then(() =>
-        showMessage("upload-message", "Link copied to clipboard! 📋", "success")
+        showMessage(
+          "profile-message",
+          "Link copied to clipboard! 📋",
+          "success"
+        )
       )
       .catch(() =>
-        showMessage("upload-message", "Unable to share video", "error")
+        showMessage("profile-message", "Unable to share video", "error")
       );
   }
 }
@@ -1152,25 +1802,38 @@ function resetUploadForm() {
 
   updateCharCount("video-title", 200);
   updateCharCount("video-description", 500);
-  if ($("secret-preview")) updateCharCount("secret-preview", 300);
+  const secretPreviewInput = $("secret-preview");
+  if (secretPreviewInput) updateCharCount("secret-preview", 300);
 
-  if ($("secret-options")) $("secret-options").classList.add("hidden");
-  if ($("price-group")) $("price-group").style.display = "none";
+  const secretOptions = $("secret-options");
+  if (secretOptions) secretOptions.classList.add("hidden");
+
+  const priceGroup = $("price-group");
+  if (priceGroup) priceGroup.style.display = "none";
 }
 
 function saveDraft() {
+  const titleInput = $("video-title");
+  const descInput = $("video-description");
+  const secretInput = $("secret-preview");
+  const categoryInput = $("category");
+  const isSecretInput = $("is-secret");
+  const priceInput = $("price");
+  const tagsInput = $("tags");
+  const instagramInput = $("instagram-link");
+
   const draftData = {
-    title: $("video-title")?.value || "",
-    description: $("video-description")?.value || "",
-    secretPreview: $("secret-preview")?.value || "",
-    category: $("category")?.value || "",
-    isSecret: $("is-secret")?.checked || false,
+    title: titleInput?.value || "",
+    description: descInput?.value || "",
+    secretPreview: secretInput?.value || "",
+    category: categoryInput?.value || "",
+    isSecret: isSecretInput?.checked || false,
     accessType:
       document.querySelector('input[name="access-type"]:checked')?.value ||
       "free",
-    price: $("price")?.value || "",
-    tags: $("tags")?.value || "",
-    instagramLink: $("instagram-link")?.value || "",
+    price: priceInput?.value || "",
+    tags: tagsInput?.value || "",
+    instagramLink: instagramInput?.value || "",
     timestamp: Date.now(),
   };
 
@@ -1185,17 +1848,23 @@ function loadDraft() {
 
     const draft = JSON.parse(draftData);
 
-    if ($("video-title")) $("video-title").value = draft.title || "";
-    if ($("video-description"))
-      $("video-description").value = draft.description || "";
-    if ($("secret-preview"))
-      $("secret-preview").value = draft.secretPreview || "";
-    if ($("category")) $("category").value = draft.category || "";
-    if ($("is-secret")) $("is-secret").checked = draft.isSecret || false;
-    if ($("price")) $("price").value = draft.price || "";
-    if ($("tags")) $("tags").value = draft.tags || "";
-    if ($("instagram-link"))
-      $("instagram-link").value = draft.instagramLink || "";
+    const titleInput = $("video-title");
+    const descInput = $("video-description");
+    const secretInput = $("secret-preview");
+    const categoryInput = $("category");
+    const isSecretInput = $("is-secret");
+    const priceInput = $("price");
+    const tagsInput = $("tags");
+    const instagramInput = $("instagram-link");
+
+    if (titleInput) titleInput.value = draft.title || "";
+    if (descInput) descInput.value = draft.description || "";
+    if (secretInput) secretInput.value = draft.secretPreview || "";
+    if (categoryInput) categoryInput.value = draft.category || "";
+    if (isSecretInput) isSecretInput.checked = draft.isSecret || false;
+    if (priceInput) priceInput.value = draft.price || "";
+    if (tagsInput) tagsInput.value = draft.tags || "";
+    if (instagramInput) instagramInput.value = draft.instagramLink || "";
 
     if (draft.accessType) {
       const accessInput = document.querySelector(
@@ -1204,17 +1873,20 @@ function loadDraft() {
       if (accessInput) accessInput.checked = true;
     }
 
-    if (draft.isSecret && $("secret-options")) {
-      $("secret-options").classList.remove("hidden");
+    const secretOptions = $("secret-options");
+    const priceGroup = $("price-group");
+
+    if (draft.isSecret && secretOptions) {
+      secretOptions.classList.remove("hidden");
     }
 
-    if (draft.accessType === "paid" && $("price-group")) {
-      $("price-group").style.display = "block";
+    if (draft.accessType === "paid" && priceGroup) {
+      priceGroup.style.display = "block";
     }
 
     updateCharCount("video-title", 200);
     updateCharCount("video-description", 500);
-    if ($("secret-preview")) updateCharCount("secret-preview", 300);
+    updateCharCount("secret-preview", 300);
 
     showMessage("upload-message", "Draft loaded", "info");
   } catch (error) {
@@ -1248,69 +1920,10 @@ async function loadMoreVideos() {
     await loadVideoFeed();
   } catch (error) {
     console.error("Error loading more videos:", error);
-    showMessage("upload-message", "Error loading more videos", "error");
+    showMessage("profile-message", "Error loading more videos", "error");
   } finally {
     loadMoreBtn.textContent = "Load More Videos";
     loadMoreBtn.disabled = false;
-  }
-}
-
-/* ---------- PROFILE FUNCTIONS ---------- */
-async function updateProfile(e) {
-  e.preventDefault();
-  const username = $("update-username").value.trim();
-
-  if (!username) {
-    showMessage("profile-message", "Username is required", "error");
-    return;
-  }
-
-  try {
-    const { error } = await sb.auth.updateUser({
-      data: { username: username },
-    });
-
-    if (error) throw error;
-
-    showMessage("profile-message", "Profile updated successfully!", "success");
-    await loadUserProfile({
-      ...currentUser,
-      user_metadata: { ...currentUser.user_metadata, username },
-    });
-  } catch (error) {
-    console.error("Profile update error:", error);
-    showMessage("profile-message", error.message, "error");
-  }
-}
-
-async function changePassword(e) {
-  e.preventDefault();
-  const newPass = $("new-pass").value;
-  const confirmPass = $("confirm-pass").value;
-
-  if (newPass !== confirmPass) {
-    showMessage("profile-message", "Passwords do not match", "error");
-    return;
-  }
-
-  if (newPass.length < 6) {
-    showMessage(
-      "profile-message",
-      "Password must be at least 6 characters",
-      "error"
-    );
-    return;
-  }
-
-  try {
-    const { error } = await sb.auth.updateUser({ password: newPass });
-    if (error) throw error;
-
-    showMessage("profile-message", "Password changed successfully!", "success");
-    e.target.reset();
-  } catch (error) {
-    console.error("Password change error:", error);
-    showMessage("profile-message", error.message, "error");
   }
 }
 
@@ -1327,6 +1940,17 @@ async function logout() {
   }
 }
 
+/* ---------- PLACEHOLDER FUNCTIONS FOR MISSING FEATURES ---------- */
+function likeComment(commentId) {
+  console.log("Like comment:", commentId);
+  // TODO: Implement comment liking functionality
+}
+
+function replyToComment(commentId) {
+  console.log("Reply to comment:", commentId);
+  // TODO: Implement comment reply functionality
+}
+
 /* ---------- AUTO-SAVE DRAFT ---------- */
 if (window.location.pathname.includes("createone.html")) {
   document.addEventListener("DOMContentLoaded", () => {
@@ -1335,20 +1959,25 @@ if (window.location.pathname.includes("createone.html")) {
 
   setInterval(() => {
     if (window.location.pathname.includes("createone.html")) {
-      const title = $("video-title")?.value.trim();
-      const description = $("video-description")?.value.trim();
+      const titleInput = $("video-title");
+      const descInput = $("video-description");
+      const title = titleInput?.value.trim();
+      const description = descInput?.value.trim();
       if (title || description) saveDraft();
     }
   }, 30000);
 }
 
-// Global functions for debugging
+/* ---------- GLOBAL FUNCTIONS FOR DEBUGGING ---------- */
 window.debugFunctions = {
   loadVideoFeed,
   uploadVideo,
+  showRequestModal,
+  showCommentsModal,
   currentUser: () => currentUser,
   isUploading: () => isUploading,
   clearFilters,
-  showRequestModal,
   handleSecretRequest,
+  handleCommentSubmit,
+  loadUserProfileData,
 };
