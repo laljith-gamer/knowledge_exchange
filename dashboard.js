@@ -127,7 +127,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         console.log("Loading profile data...");
         loadUserProfileData();
       }
-    }, 200);
+    }, 300);
   } catch (error) {
     console.error("Initialization error:", error);
     window.location.href = "index.html";
@@ -391,6 +391,104 @@ function bindDashboardEvents() {
   window.addEventListener("click", (e) => {
     if (e.target.classList.contains("modal")) {
       e.target.classList.add("hidden");
+    }
+  });
+
+  // **CRITICAL FIX: Event delegation for dynamically created buttons**
+  document.addEventListener("click", function (e) {
+    // Handle request access buttons
+    if (
+      e.target.classList.contains("double-tap-btn") ||
+      e.target.closest(".double-tap-btn")
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const btn = e.target.classList.contains("double-tap-btn")
+        ? e.target
+        : e.target.closest(".double-tap-btn");
+      const videoId = btn.dataset.videoId;
+
+      console.log(
+        "Request access button clicked via delegation! Video ID:",
+        videoId
+      );
+
+      if (videoId) {
+        showRequestModal(videoId);
+      } else {
+        console.error("No video ID found on request button");
+        showMessage("profile-message", "Error: No video ID found", "error");
+      }
+    }
+
+    // Handle like buttons
+    if (
+      e.target.classList.contains("like-btn") ||
+      e.target.closest(".like-btn")
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const btn = e.target.classList.contains("like-btn")
+        ? e.target
+        : e.target.closest(".like-btn");
+      const videoId = btn.dataset.videoId;
+
+      if (videoId) {
+        toggleLike(videoId, btn);
+      }
+    }
+
+    // Handle comment buttons
+    if (
+      e.target.classList.contains("comment-btn") ||
+      e.target.closest(".comment-btn")
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const btn = e.target.classList.contains("comment-btn")
+        ? e.target
+        : e.target.closest(".comment-btn");
+      const videoId = btn.dataset.videoId;
+
+      if (videoId) {
+        showCommentsModal(videoId);
+      }
+    }
+
+    // Handle share buttons
+    if (
+      e.target.classList.contains("share-btn") ||
+      e.target.closest(".share-btn")
+    ) {
+      e.preventDefault();
+      e.stopPropagation();
+
+      const btn = e.target.classList.contains("share-btn")
+        ? e.target
+        : e.target.closest(".share-btn");
+      const videoId = btn.dataset.videoId;
+
+      if (videoId) {
+        // Find the video data (you might need to store this differently)
+        const postCard = btn.closest(".post-card");
+        if (postCard) {
+          const videoTitle =
+            postCard.querySelector(".video-title")?.textContent ||
+            "Check out this video";
+          const videoDescription =
+            postCard.querySelector(".video-description")?.textContent || "";
+
+          shareVideo({
+            id: videoId,
+            title: videoTitle,
+            description: videoDescription,
+            secret_preview: videoDescription,
+          });
+        }
+      }
     }
   });
 
@@ -679,7 +777,7 @@ async function createVideoCard(video) {
             }</p>
             <div class="blur-overlay">
               <div class="unlock-icon">🔓</div>
-              <p>Double tap to request access</p>
+              <p>Click button below to request access</p>
             </div>
           </div>
         </div>
@@ -749,43 +847,16 @@ async function createVideoCard(video) {
     </div>
   `;
 
-  // Add event listeners
-  const requestBtn = card.querySelector(".double-tap-btn");
-  const likeBtn = card.querySelector(".like-btn");
-  const shareBtn = card.querySelector(".share-btn");
-  const commentBtn = card.querySelector(".comment-btn");
-  const videoElement = card.querySelector("video");
-
-  if (requestBtn) {
-    requestBtn.onclick = () => showRequestModal(video.id);
-  }
-
-  if (likeBtn) {
-    likeBtn.onclick = () => toggleLike(video.id, likeBtn);
-  }
-
-  if (shareBtn) {
-    shareBtn.onclick = () => shareVideo(video);
-  }
-
-  if (commentBtn) {
-    commentBtn.onclick = () => showCommentsModal(video.id);
-  }
-
-  if (videoElement) {
-    videoElement.onplay = () => incrementViews(video.id);
-  }
+  console.log(
+    `Created video card for video ${video.id}, is_secret: ${video.is_secret}, hasAccess: ${hasAccess}`
+  );
 
   return card;
 }
 
-/* ---------- REST OF THE FUNCTIONS (COMMENTS, MODALS, etc.) ---------- */
-// [All the remaining functions from your original code remain the same]
-// I'm keeping this comment to show where the rest of your original functions go
-// to avoid making this response too long. The key fixes are in the initialization
-// and event binding sections above.
-
+/* ---------- COMMENTS FUNCTIONALITY ---------- */
 function showCommentsModal(videoId) {
+  console.log("Showing comments modal for video:", videoId);
   currentVideoIdForComments = videoId;
   const modal = $("comments-modal");
   if (modal) {
@@ -1009,7 +1080,26 @@ function updateCommentCharCount() {
 
 /* ---------- SECRET REQUEST FUNCTIONALITY ---------- */
 async function showRequestModal(videoId) {
+  console.log("=== SHOW REQUEST MODAL ===");
+  console.log("Video ID:", videoId);
+  console.log("Current User:", currentUser);
+
+  if (!videoId) {
+    console.error("No video ID provided to showRequestModal");
+    showMessage("profile-message", "Error: No video ID found", "error");
+    return;
+  }
+
+  if (!currentUser) {
+    console.error("No current user found");
+    showMessage("profile-message", "Please log in to request access", "error");
+    return;
+  }
+
   try {
+    console.log("Checking for existing request...");
+
+    // Check if user already has a pending/approved request
     const { data: existingRequest, error } = await sb
       .from("secret_requests")
       .select("status, created_at")
@@ -1018,6 +1108,7 @@ async function showRequestModal(videoId) {
       .single();
 
     if (existingRequest) {
+      console.log("Existing request found:", existingRequest);
       const statusText =
         existingRequest.status === "pending"
           ? "Your request is pending approval"
@@ -1027,25 +1118,49 @@ async function showRequestModal(videoId) {
       return;
     }
 
-    const modal = $("request-modal");
-    if (modal) {
-      modal.classList.remove("hidden");
-      modal.dataset.videoId = videoId;
+    console.log("No existing request, showing modal...");
 
-      setTimeout(() => {
-        const reasonInput = $("request-reason");
-        if (reasonInput) reasonInput.focus();
-      }, 100);
+    // No existing request, show modal
+    const modal = $("request-modal");
+    if (!modal) {
+      console.error("Request modal element not found!");
+      showMessage("profile-message", "Error: Modal not found", "error");
+      return;
     }
+
+    console.log("Modal found, showing it...");
+    modal.classList.remove("hidden");
+    modal.dataset.videoId = videoId;
+
+    console.log("Modal classes after show:", modal.className);
+    console.log("Modal dataset:", modal.dataset);
+
+    // Focus first input
+    setTimeout(() => {
+      const reasonInput = $("request-reason");
+      if (reasonInput) {
+        reasonInput.focus();
+        console.log("Focused on reason input");
+      } else {
+        console.log("Reason input not found");
+      }
+    }, 100);
   } catch (error) {
+    console.error("Error in showRequestModal:", error);
+
     if (error.code === "PGRST116") {
+      // No existing request found, show modal
+      console.log(
+        "PGRST116 error (no existing request), showing modal anyway..."
+      );
       const modal = $("request-modal");
       if (modal) {
         modal.classList.remove("hidden");
         modal.dataset.videoId = videoId;
+        console.log("Modal shown after PGRST116 error");
       }
     } else {
-      console.error("Error checking existing request:", error);
+      console.error("Unexpected error checking existing request:", error);
       showMessage("profile-message", "Error checking request status", "error");
     }
   }
@@ -1053,21 +1168,32 @@ async function showRequestModal(videoId) {
 
 async function handleSecretRequest(e) {
   e.preventDefault();
+  console.log("=== HANDLE SECRET REQUEST ===");
 
   const modal = $("request-modal");
-  if (!modal) return;
+  if (!modal) {
+    console.error("Modal not found in handleSecretRequest");
+    return;
+  }
 
   const videoId = modal.dataset.videoId;
+  console.log("Processing request for video ID:", videoId);
+
   const reasonInput = $("request-reason");
   const offerDetailsInput = $("offer-details");
 
-  if (!reasonInput || !offerDetailsInput) return;
+  if (!reasonInput || !offerDetailsInput) {
+    console.error("Required inputs not found");
+    return;
+  }
 
   const reason = reasonInput.value.trim();
   const offerType = document.querySelector(
     'input[name="offer-type"]:checked'
   )?.value;
   const offerDetails = offerDetailsInput.value.trim();
+
+  console.log("Form data:", { reason, offerType, offerDetails });
 
   if (!reason || !offerType || !offerDetails) {
     showMessage("profile-message", "Please fill in all fields", "error");
@@ -1089,6 +1215,8 @@ async function handleSecretRequest(e) {
 
     if (videoError) throw videoError;
 
+    console.log("Video creator ID:", video.user_id);
+
     let result;
     try {
       const { data: rpcResult, error: rpcError } = await sb.rpc(
@@ -1105,6 +1233,7 @@ async function handleSecretRequest(e) {
 
       if (rpcError) throw rpcError;
       result = rpcResult;
+      console.log("RPC result:", result);
     } catch (rpcError) {
       console.log("RPC failed, trying direct insert:", rpcError);
       const { error: insertError } = await sb.from("secret_requests").insert({
@@ -1469,21 +1598,286 @@ async function uploadVideo(e) {
   }
 }
 
-/* ---------- REMAINING FUNCTIONS ---------- */
-// Profile, interactions, utilities, etc. - keeping the rest of your original functions
-
+/* ---------- PROFILE UPDATE FUNCTIONALITY ---------- */
 async function handleProfileUpdate(e) {
   e.preventDefault();
-  // [Your existing handleProfileUpdate code]
+
+  const usernameInput = $("update-username");
+  const fullNameInput = $("update-fullname");
+  const bioInput = $("update-bio");
+  const instagramInput = $("update-instagram");
+  const websiteInput = $("update-website");
+
+  if (!usernameInput) return;
+
+  const username = usernameInput.value.trim();
+  const fullName = fullNameInput?.value.trim();
+  const bio = bioInput?.value.trim();
+  const instagram = instagramInput?.value.trim();
+  const website = websiteInput?.value.trim();
+
+  if (!username) {
+    showMessage("profile-message", "Username is required", "error");
+    return;
+  }
+
+  if (username.length < 3 || username.length > 30) {
+    showMessage(
+      "profile-message",
+      "Username must be 3-30 characters long",
+      "error"
+    );
+    return;
+  }
+
+  if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+    showMessage(
+      "profile-message",
+      "Username can only contain letters, numbers, and underscores",
+      "error"
+    );
+    return;
+  }
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Updating...";
+  }
+
+  try {
+    // Try RPC function first
+    let result;
+    try {
+      const { data: rpcResult, error: rpcError } = await sb.rpc(
+        "update_user_profile",
+        {
+          p_user_id: currentUser.id,
+          p_username: username,
+          p_full_name: fullName || null,
+          p_bio: bio || null,
+          p_instagram_handle: instagram || null,
+          p_website_url: website || null,
+        }
+      );
+
+      if (rpcError) throw rpcError;
+      result = rpcResult;
+    } catch (rpcError) {
+      // Fallback to direct update
+      console.log("RPC failed, trying direct update:", rpcError);
+
+      // Check if username is already taken
+      const { data: existingProfile } = await sb
+        .from("profiles")
+        .select("id")
+        .eq("username", username)
+        .neq("id", currentUser.id)
+        .single();
+
+      if (existingProfile) {
+        result = { success: false, message: "Username already taken" };
+      } else {
+        // Update profile
+        const { error: updateError } = await sb
+          .from("profiles")
+          .update({
+            username: username,
+            full_name: fullName || null,
+            bio: bio || null,
+            instagram_handle: instagram || null,
+            website_url: website || null,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", currentUser.id);
+
+        if (updateError) throw updateError;
+
+        // Update auth metadata
+        await sb.auth.updateUser({
+          data: {
+            username: username,
+            full_name: fullName || "",
+          },
+        });
+
+        result = { success: true, message: "Profile updated successfully" };
+      }
+    }
+
+    if (result && result.success) {
+      showMessage(
+        "profile-message",
+        "Profile updated successfully! ✅",
+        "success"
+      );
+
+      // Update the current user metadata
+      currentUser.user_metadata = {
+        ...currentUser.user_metadata,
+        username: username,
+        full_name: fullName,
+      };
+
+      // Reload profile data to update display
+      await loadUserProfileData();
+    } else {
+      showMessage(
+        "profile-message",
+        result?.message || "Failed to update profile",
+        "error"
+      );
+    }
+  } catch (error) {
+    console.error("Error updating profile:", error);
+    showMessage(
+      "profile-message",
+      "Failed to update profile. Please try again.",
+      "error"
+    );
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Update Profile";
+    }
+  }
 }
 
 async function handlePasswordChange(e) {
   e.preventDefault();
-  // [Your existing handlePasswordChange code]
+
+  const currentPasswordInput = $("current-password");
+  const newPasswordInput = $("new-password");
+  const confirmPasswordInput = $("confirm-password");
+
+  if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput)
+    return;
+
+  const currentPassword = currentPasswordInput.value;
+  const newPassword = newPasswordInput.value;
+  const confirmPassword = confirmPasswordInput.value;
+
+  if (newPassword !== confirmPassword) {
+    showMessage("profile-message", "New passwords do not match", "error");
+    return;
+  }
+
+  if (newPassword.length < 6) {
+    showMessage(
+      "profile-message",
+      "Password must be at least 6 characters",
+      "error"
+    );
+    return;
+  }
+
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Changing...";
+  }
+
+  try {
+    // Verify current password by attempting to sign in
+    const { error: verifyError } = await sb.auth.signInWithPassword({
+      email: currentUser.email,
+      password: currentPassword,
+    });
+
+    if (verifyError) {
+      showMessage("profile-message", "Current password is incorrect", "error");
+      return;
+    }
+
+    // Update password
+    const { error } = await sb.auth.updateUser({
+      password: newPassword,
+    });
+
+    if (error) throw error;
+
+    showMessage(
+      "profile-message",
+      "Password changed successfully! 🔒",
+      "success"
+    );
+    e.target.reset();
+  } catch (error) {
+    console.error("Error changing password:", error);
+    showMessage(
+      "profile-message",
+      "Failed to change password. Please try again.",
+      "error"
+    );
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Change Password";
+    }
+  }
 }
 
 async function handlePrivacySettings() {
-  // [Your existing handlePrivacySettings code]
+  const isPublicInput = $("profile-public");
+  const allowRequestsInput = $("allow-requests");
+
+  if (!isPublicInput || !allowRequestsInput) return;
+
+  const isPublic = isPublicInput.checked;
+  const allowRequests = allowRequestsInput.checked;
+
+  try {
+    // Try RPC function first
+    let result;
+    try {
+      const { data: rpcResult, error: rpcError } = await sb.rpc(
+        "update_privacy_settings",
+        {
+          p_user_id: currentUser.id,
+          p_is_public: isPublic,
+          p_allow_requests: allowRequests,
+        }
+      );
+
+      if (rpcError) throw rpcError;
+      result = rpcResult;
+    } catch (rpcError) {
+      // Fallback to direct update
+      console.log("RPC failed, trying direct update:", rpcError);
+
+      const { error: updateError } = await sb
+        .from("profiles")
+        .update({
+          is_public: isPublic,
+          allow_requests: allowRequests,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", currentUser.id);
+
+      if (updateError) throw updateError;
+      result = {
+        success: true,
+        message: "Privacy settings updated successfully",
+      };
+    }
+
+    if (result && result.success) {
+      showMessage("profile-message", "Privacy settings updated! 🛡️", "success");
+    } else {
+      showMessage(
+        "profile-message",
+        result?.message || "Failed to update privacy settings",
+        "error"
+      );
+    }
+  } catch (error) {
+    console.error("Error updating privacy settings:", error);
+    showMessage(
+      "profile-message",
+      "Failed to update privacy settings",
+      "error"
+    );
+  }
 }
 
 function updateBioCharCount() {
@@ -1498,6 +1892,7 @@ function updateBioCharCount() {
   }
 }
 
+/* ---------- INTERACTION FUNCTIONS ---------- */
 async function toggleLike(videoId, likeBtn) {
   if (!currentUser) return;
 
@@ -1582,6 +1977,7 @@ function shareVideo(video) {
   }
 }
 
+/* ---------- NOTIFICATIONS ---------- */
 async function loadNotifications() {
   try {
     const { data: notifications, error } = await sb
@@ -1616,6 +2012,7 @@ function toggleNotifications() {
   }
 }
 
+/* ---------- UTILITY FUNCTIONS ---------- */
 function resetUploadForm() {
   const form = $("upload-form");
   if (form) form.reset();
@@ -1790,7 +2187,7 @@ if (window.location.pathname.includes("createone.html")) {
   }, 30000);
 }
 
-/* ---------- GLOBAL DEBUG FUNCTIONS ---------- */
+/* ---------- GLOBAL DEBUG AND TESTING FUNCTIONS ---------- */
 window.debugFunctions = {
   loadVideoFeed,
   uploadVideo,
@@ -1817,11 +2214,33 @@ window.debugFunctions = {
       console.log(`Story ${index}:`, item, "Dataset:", item.dataset);
     });
 
+    const requestBtns = document.querySelectorAll(".double-tap-btn");
+    console.log("Request buttons found:", requestBtns.length);
+    requestBtns.forEach((btn, index) => {
+      console.log(
+        `Request button ${index}:`,
+        btn,
+        "Video ID:",
+        btn.dataset.videoId
+      );
+    });
+
     if (filterTabs.length > 0) {
       console.log("Trying to click first filter tab...");
       filterTabs[0].click();
     }
   },
+  testRequestModal: (videoId) => {
+    console.log("Testing request modal with video ID:", videoId);
+    showRequestModal(videoId);
+  },
 };
 
-console.log("Dashboard.js loaded successfully! ✅");
+// Make key functions globally available
+window.showRequestModal = showRequestModal;
+window.changeFilter = window.changeFilter;
+window.changeCategory = window.changeCategory;
+
+console.log("✅ Dashboard.js loaded successfully!");
+console.log("🔧 Debug functions available: window.debugFunctions");
+console.log("🎬 Request modal function: window.showRequestModal()");
