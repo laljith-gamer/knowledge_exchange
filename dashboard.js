@@ -1343,7 +1343,15 @@ function handleDrop(e) {
 
 function handleVideoSelect(e) {
   const file = e.target.files[0];
-  if (!file) return;
+  const preview = $("video-preview");
+  const uploadArea = $("video-upload-area");
+
+  console.log("Video file selected:", file); // Debug log
+
+  if (!file) {
+    console.log("No file selected");
+    return;
+  }
 
   if (!file.type.startsWith("video/")) {
     showMessage("upload-message", "Please select a valid video file", "error");
@@ -1368,23 +1376,48 @@ function handleVideoSelect(e) {
     "success"
   );
 
-  const preview = $("video-preview");
-  const uploadArea = $("video-upload-area");
-
   if (preview && uploadArea) {
     const video = preview.querySelector("video");
     if (video) {
       try {
-        video.src = URL.createObjectURL(file);
+        // **CRITICAL FIX: Always revoke previous object URL**
+        if (video.src && video.src.startsWith("blob:")) {
+          URL.revokeObjectURL(video.src);
+          console.log("Previous object URL revoked");
+        }
+
+        // Clear the video source
+        video.src = "";
+        video.load();
+
+        // Create new object URL
+        const newVideoUrl = URL.createObjectURL(file);
+        console.log("New object URL created:", newVideoUrl);
+
+        // Set new source and show preview
+        video.src = newVideoUrl;
+        video.load(); // **IMPORTANT: Force reload**
+
         preview.classList.remove("hidden");
         uploadArea.style.display = "none";
 
+        // Auto-fill title if empty
         const titleInput = $("video-title");
         if (titleInput && !titleInput.value.trim()) {
           const fileName = file.name.replace(/\.[^/.]+$/, "");
           titleInput.value = fileName.replace(/[_-]/g, " ");
           updateCharCount("video-title", 200);
         }
+
+        // **IMPORTANT: Handle video load events**
+        video.addEventListener("loadeddata", () => {
+          console.log("✅ Video loaded successfully");
+        });
+
+        video.addEventListener("error", (e) => {
+          console.error("❌ Video load error:", e);
+          showMessage("upload-message", "Error loading video preview", "error");
+        });
       } catch (error) {
         console.error("Error creating video preview:", error);
         showMessage("upload-message", "Error creating video preview", "error");
@@ -1392,6 +1425,7 @@ function handleVideoSelect(e) {
     }
   }
 }
+
 
 function removeVideoPreview() {
   const preview = $("video-preview");
