@@ -147,7 +147,6 @@ textarea {
     border: 2px solid var(--border-color);
     border-radius: 10px;
     font-size: 16px;
-    background: var(--light-bg);
     margin-bottom: 18px;
     transition: var(--transition);
     font-family: inherit;
@@ -159,7 +158,7 @@ select:focus,
 textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    background: white;
+    background: rgb(47, 47, 47);
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
 }
 
@@ -2052,4 +2051,158 @@ textarea:focus-visible {
 .video-card,
 .post-card {
     @extend .gpu-accelerated;
+}
+/* ==================== AUTH ENHANCEMENT STYLES ==================== */
+.brand-header {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.brand-header h1 {
+    font-size: 32px;
+    margin-bottom: 8px;
+    background: var(--primary-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.brand-subtitle {
+    color: var(--muted-text);
+    font-size: 16px;
+    margin-bottom: 0;
+}
+
+.form-hint {
+    font-size: 13px;
+    color: var(--muted-text);
+    margin: -12px 0 16px 0;
+    text-align: center;
+}
+
+.form-help {
+    font-size: 12px;
+    color: var(--muted-text);
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+.auth-footer,
+.welcome-message {
+    margin-top: 24px;
+    text-align: center;
+}
+
+.auth-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.signup-benefits {
+    background: rgba(102, 126, 234, 0.05);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(102, 126, 234, 0.1);
+}
+
+.signup-benefits h3 {
+    margin-bottom: 12px;
+    color: var(--dark-text);
+    font-size: 16px;
+}
+
+.benefits-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.benefits-list li {
+    padding: 4px 0;
+    font-size: 14px;
+    color: var(--dark-text);
+}
+
+.otp-info {
+    text-align: center;
+    margin-bottom: 24px;
+}
+
+.email-display {
+    font-weight: 600;
+    color: var(--primary-color);
+    background: rgba(102, 126, 234, 0.1);
+    padding: 8px 12px;
+    border-radius: 6px;
+    margin: 8px 0;
+    font-family: monospace;
+}
+
+.loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    backdrop-filter: blur(4px);
+}
+
+.loading-content {
+    text-align: center;
+    color: white;
+}
+
+.loading-content p {
+    margin-top: 16px;
+    font-size: 16px;
+}
+
+/* Form group styling */
+.form-group {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 6px;
+    font-weight: 600;
+    color: var(--dark-text);
+    font-size: 14px;
+}
+
+/* Enhanced button states */
+.btn:focus-visible {
+    outline: 2px solid var(--primary-color);
+    outline-offset: 2px;
+}
+
+.btn.link:hover {
+    background: rgba(102, 126, 234, 0.05);
+}
+
+/* Responsive improvements */
+@media (max-width: 480px) {
+    .auth-actions {
+        flex-direction: column;
+        text-align: center;
+    }
+
+    .signup-benefits {
+        padding: 16px;
+    }
+
+    .brand-header h1 {
+        font-size: 28px;
+    }
 }
