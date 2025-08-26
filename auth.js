@@ -209,7 +209,7 @@ function bindEvents() {
   });
 }
 
-/* ---------- STEP 1: USER CHECK ---------- */
+/* ---------- STEP 1: USER CHECK (FIXED VERSION) ---------- */
 async function onCheck(e) {
   e.preventDefault();
   rawId = $("input-id").value.trim();
@@ -230,42 +230,22 @@ async function onCheck(e) {
   try {
     email = rawId;
 
-    // Check if user exists by email
-    const { data: existingUsers, error } = await sb
-      .from("profiles")
-      .select("id, username, full_name")
-      .eq(
-        "id",
-        sb.auth.getUser().then((res) => res.data?.user?.id || "none")
-      )
-      .limit(1);
+    // Use the SQL function to check if user exists
+    const { data: userExists, error } = await sb.rpc("user_exists_by_email", {
+      email_input: email,
+    });
 
-    // Alternative: Check auth.users directly via RPC or auth methods
-    const { data: authData, error: authError } =
-      await sb.auth.signInWithPassword({
-        email: email,
-        password: "dummy_check_password_123", // This will fail but tell us if user exists
-      });
-
-    // If error is "Invalid login credentials", user doesn't exist
-    // If error is about email confirmation, user exists but not confirmed
-    // If no error, this shouldn't happen with dummy password
-
-    let userExists = false;
-    if (authError) {
-      if (authError.message.includes("Invalid login credentials")) {
-        userExists = false;
-      } else if (authError.message.includes("Email not confirmed")) {
-        userExists = true;
-      } else if (authError.message.includes("Invalid")) {
-        userExists = true; // User exists but wrong password
-      }
+    if (error) {
+      console.error("Error checking user:", error);
+      throw error;
     }
 
     if (userExists) {
+      // User exists, go to login
       $("login-label").textContent = `Welcome back! Sign in to ${email}`;
       show("step-login");
     } else {
+      // New user, go to signup
       isNewSignup = true;
       $("signup-label").textContent = `Create your SecretShare account`;
       show("step-signup");
@@ -278,7 +258,7 @@ async function onCheck(e) {
   }
 }
 
-/* ---------- STEP 2: LOGIN ---------- */
+/* ---------- STEP 2: LOGIN (IMPROVED VERSION) ---------- */
 async function onLogin(e) {
   e.preventDefault();
   const pwd = $("login-pass").value;
@@ -308,26 +288,42 @@ async function onLogin(e) {
           "err-login",
           "Please check your email and confirm your account first"
         );
+        // Optionally redirect to OTP verification
+        setTimeout(() => {
+          show("step-otp");
+          $("otp-mail").textContent = email;
+        }, 2000);
       } else if (error.message.includes("Invalid login credentials")) {
         setErr("err-login", "Incorrect password. Please try again.");
+      } else if (error.message.includes("too many requests")) {
+        setErr(
+          "err-login",
+          "Too many login attempts. Please wait before trying again."
+        );
       } else {
         setErr("err-login", error.message);
       }
     } else if (data.user) {
       // Check if profile is complete
-      const { data: profile } = await sb
-        .from("profiles")
-        .select("username")
-        .eq("id", data.user.id)
-        .single();
+      try {
+        const { data: profile } = await sb
+          .from("profiles")
+          .select("username")
+          .eq("id", data.user.id)
+          .single();
 
-      if (!profile?.username) {
-        // Profile incomplete, go to profile setup
+        if (!profile?.username) {
+          // Profile incomplete, go to profile setup
+          show("step-profile");
+        } else {
+          // Success - redirect to dashboard
+          showLoadingOverlay(true, "Welcome back! Redirecting...");
+          window.location.href = "home.html";
+        }
+      } catch (profileError) {
+        console.error("Profile check error:", profileError);
+        // If profile check fails, assume profile is incomplete
         show("step-profile");
-      } else {
-        // Redirect to dashboard
-        showLoadingOverlay(true, "Redirecting to dashboard...");
-        window.location.href = "home.html";
       }
     }
   } catch (error) {
@@ -338,13 +334,29 @@ async function onLogin(e) {
   }
 }
 
-/* ---------- STEP 3: SIGNUP ---------- */
+/* ---------- STEP 3: SIGNUP (UPDATED VERSION) ---------- */
 async function onSignup(e) {
   e.preventDefault();
 
   if (!email || !validateEmail(email)) {
     setErr("err-signup", "Valid email address required");
     return;
+  }
+
+  // Double-check that user doesn't exist (safety check)
+  try {
+    const { data: userExists } = await sb.rpc("user_exists_by_email", {
+      email_input: email,
+    });
+
+    if (userExists) {
+      setErr("err-signup", "Account already exists. Please sign in instead.");
+      setTimeout(() => show("step-login"), 2000);
+      return;
+    }
+  } catch (error) {
+    console.warn("Could not verify user existence:", error);
+    // Continue with signup anyway
   }
 
   const btn = e.target.querySelector("button");
@@ -367,6 +379,9 @@ async function onSignup(e) {
           "err-signup",
           "Too many attempts. Please wait a minute before trying again."
         );
+      } else if (error.message.includes("already registered")) {
+        setErr("err-signup", "Account already exists. Please sign in instead.");
+        setTimeout(() => show("step-login"), 2000);
       } else {
         setErr("err-signup", error.message);
       }
@@ -444,7 +459,7 @@ async function onCompleteProfile(e) {
   uname = $("profile-user").value.trim();
   const p1 = $("profile-pass").value;
   const p2 = $("profile-pass2").value;
-  const fullName = $("profile-name").value.trim();
+  const fullName = $("profile-name") ? $("profile-name").value.trim() : "";
 
   // Validation
   if (!uname) {
@@ -674,4 +689,6 @@ window.authDebug = {
     isNewSignup = false;
     show("step-check");
   },
+  checkEmail: (emailInput) =>
+    sb.rpc("user_exists_by_email", { email_input: emailInput }),
 };
