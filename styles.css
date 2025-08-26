@@ -1203,7 +1203,7 @@ input:valid:not(:focus):not(:placeholder-shown) {
 }
 
 .skeleton {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background: linear-gradient(90deg, #292525 25%, #281c1c 50%, #3e2525 75%);
     background-size: 200px 100%;
     animation: shimmer 1.5s infinite;
 }
