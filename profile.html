@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dashboard - Profile</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dashboard-body">
+  <div class="dashboard-container">
+    <!-- Navigation -->
+    <nav class="dashboard-nav">
+      <div class="nav-brand">
+        <h3>Dashboard</h3>
+      </div>
+      <div class="nav-links">
+        <a href="home.html" class="nav-link">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="profile.html" class="nav-link active">
+          <span class="nav-icon">👤</span>
+          Profile
+        </a>
+        <a href="createone.html" class="nav-link">
+          <span class="nav-icon">➕</span>
+          Create One
+        </a>
+      </div>
+      <button class="btn secondary logout-btn" id="logout">Sign out</button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+      <div class="dashboard-content">
+        <div class="page-header">
+          <h1>My Profile</h1>
+          <p class="page-subtitle">Manage your account settings and preferences</p>
+        </div>
+
+        <div class="profile-container">
+          <div class="profile-card">
+            <div class="profile-avatar">
+              <span class="avatar-placeholder" id="avatar-text">U</span>
+            </div>
+            
+            <div class="profile-info">
+              <h2 id="profile-name">Loading...</h2>
+              <p id="profile-email">Loading...</p>
+              <p class="profile-date">Member since: <span id="profile-date">Loading...</span></p>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <h3>Account Settings</h3>
+            
+            <form id="update-profile" class="settings-form">
+              <div class="form-group">
+                <label for="update-username">Username</label>
+                <input id="update-username" type="text" placeholder="Enter username" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="update-email">Email</label>
+                <input id="update-email" type="email" placeholder="Enter email" disabled>
+                <small class="form-help">Email cannot be changed</small>
+              </div>
+              
+              <button class="btn primary" type="submit">Update Profile</button>
+            </form>
+
+            <div class="settings-divider"></div>
+
+            <h3>Change Password</h3>
+            <form id="change-password" class="settings-form">
+              <div class="form-group">
+                <label for="current-pass">Current Password</label>
+                <input id="current-pass" type="password" placeholder="Enter current password" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="new-pass">New Password</label>
+                <input id="new-pass" type="password" placeholder="Enter new password" minlength="6" required>
+              </div>
+              
+              <div class="form-group">
+                <label for="confirm-pass">Confirm New Password</label>
+                <input id="confirm-pass" type="password" placeholder="Confirm new password" minlength="6" required>
+              </div>
+              
+              <button class="btn primary" type="submit">Change Password</button>
+            </form>
+          </div>
+        </div>
+
+        <div id="profile-message" class="message"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- libs -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>

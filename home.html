@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Dashboard - Home</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="dashboard-body">
+  <div class="dashboard-container">
+    <!-- Navigation -->
+    <nav class="dashboard-nav">
+      <div class="nav-brand">
+        <h3>Dashboard</h3>
+      </div>
+      <div class="nav-links">
+        <a href="home.html" class="nav-link active">
+          <span class="nav-icon">🏠</span>
+          Home
+        </a>
+        <a href="profile.html" class="nav-link">
+          <span class="nav-icon">👤</span>
+          Profile
+        </a>
+        <a href="createone.html" class="nav-link">
+          <span class="nav-icon">➕</span>
+          Create One
+        </a>
+      </div>
+      <button class="btn secondary logout-btn" id="logout">Sign out</button>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="dashboard-main">
+      <div class="dashboard-content">
+        <div class="page-header">
+          <h1>Welcome to Dashboard</h1>
+          <p class="page-subtitle">Your home base for managing everything</p>
+        </div>
+
+        <div class="dashboard-grid">
+          <div class="dashboard-card">
+            <div class="card-icon">📊</div>
+            <h3>Analytics</h3>
+            <p>View your statistics and performance metrics</p>
+            <div class="card-stats">
+              <span class="stat-number">0</span>
+              <span class="stat-label">Total Items</span>
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <div class="card-icon">📋</div>
+            <h3>Recent Activity</h3>
+            <p>Your latest actions and updates</p>
+            <div class="activity-list">
+              <p class="no-activity">No recent activity</p>
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <div class="card-icon">⚡</div>
+            <h3>Quick Actions</h3>
+            <p>Common tasks and shortcuts</p>
+            <div class="quick-actions">
+              <button class="btn primary small">New Item</button>
+              <button class="btn secondary small">View All</button>
+            </div>
+          </div>
+
+          <div class="dashboard-card">
+            <div class="card-icon">🎯</div>
+            <h3>Goals</h3>
+            <p>Track your progress and achievements</p>
+            <div class="progress-bar">
+              <div class="progress-fill" style="width: 0%"></div>
+            </div>
+            <span class="progress-text">0% Complete</span>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- libs -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
+  <script src="config.js"></script>
+  <script src="dashboard.js"></script>
+</body>
+</html>
