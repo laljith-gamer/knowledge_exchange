@@ -3,53 +3,97 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Supabase OTP Auth</title>
+  <title>SecretShare - Share Your Knowledge</title>
+  <meta name="description" content="Join SecretShare - the platform where experts monetize their secret knowledge and learners discover hidden techniques.">
   <link rel="stylesheet" href="styles.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔒</text></svg>">
 </head>
 <body>
   <main class="container">
-
-    <!-- 1 ▸ email / username -->
+    
+    <!-- Welcome/Check Step -->
     <section id="step-check" class="panel active" aria-labelledby="check-title">
       <article class="card">
-        <h2 id="check-title">Welcome</h2>
+        <div class="brand-header">
+          <h1 id="check-title">🔒 SecretShare</h1>
+          <p class="brand-subtitle">Where secret knowledge meets eager learners</p>
+        </div>
 
         <form id="form-check" autocomplete="off">
-          <input id="input-id" type="text" placeholder="Email or username" required>
+          <input 
+            id="input-id" 
+            type="text" 
+            placeholder="Enter your email address" 
+            required 
+            autocomplete="email"
+            aria-describedby="check-hint"
+          >
+          <p id="check-hint" class="form-hint">We'll check if you have an account</p>
           <button class="btn primary" type="submit">Continue</button>
         </form>
 
         <p id="err-check" class="error" role="alert"></p>
+        
+        <div class="auth-footer">
+          <p class="info">
+            🎓 <strong>New to SecretShare?</strong> Join thousands learning secret techniques from experts worldwide.
+          </p>
+        </div>
       </article>
     </section>
 
-    <!-- 2 ▸ login -->
+    <!-- Login Step -->
     <section id="step-login" class="panel" aria-labelledby="login-title">
       <article class="card">
-        <h2 id="login-title">Sign in</h2>
-
+        <h2 id="login-title">Welcome back!</h2>
         <p id="login-label" class="hint"></p>
 
-        <form id="form-login" autocomplete="current-password">
-          <input id="login-pass" type="password" placeholder="Password" required minlength="6">
-          <button class="btn primary" type="submit">Login</button>
+        <form id="form-login" autocomplete="on">
+          <input 
+            id="login-pass" 
+            type="password" 
+            placeholder="Enter your password" 
+            required 
+            minlength="6"
+            autocomplete="current-password"
+            aria-describedby="login-hint"
+          >
+          <p id="login-hint" class="form-hint">Enter your account password</p>
+          <button class="btn primary" type="submit">Sign In</button>
         </form>
 
         <p id="err-login" class="error" role="alert"></p>
-        <button class="btn link" id="back-login">← Back</button>
+        
+        <div class="auth-actions">
+          <button class="btn link" id="back-login">← Back</button>
+          <button class="btn link" id="forgot-password">Forgot password?</button>
+        </div>
       </article>
     </section>
 
-    <!-- 3 ▸ signup -->
+    <!-- Signup Step -->
     <section id="step-signup" class="panel" aria-labelledby="signup-title">
       <article class="card">
-        <h2 id="signup-title">Create account</h2>
-
+        <h2 id="signup-title">Join SecretShare</h2>
         <p id="signup-label" class="hint"></p>
 
         <form id="form-signup">
-          <p class="info">We'll send a verification code to your email address.</p>
-          <button class="btn primary" type="submit">Send verification code</button>
+          <div class="signup-benefits">
+            <h3>🚀 What you'll get:</h3>
+            <ul class="benefits-list">
+              <li>📚 Access to secret knowledge from experts</li>
+              <li>💡 Learn techniques not found anywhere else</li>
+              <li>🤝 Connect with a community of learners</li>
+              <li>🎯 Share your own expertise and earn</li>
+            </ul>
+          </div>
+          
+          <div class="info">
+            <p><strong>📧 Email Verification Required</strong></p>
+            <p>We'll send a secure verification code to confirm your email address.</p>
+          </div>
+          
+          <button class="btn primary" type="submit">Create Account</button>
         </form>
 
         <p id="err-signup" class="error" role="alert"></p>
@@ -57,44 +101,157 @@
       </article>
     </section>
 
-    <!-- 4 ▸ OTP -->
+    <!-- OTP Verification Step -->
     <section id="step-otp" class="panel" aria-labelledby="otp-title">
       <article class="card">
-        <h2 id="otp-title">Email verification</h2>
-
-        <p>A code was sent to <span id="otp-mail"></span></p>
+        <h2 id="otp-title">📧 Check Your Email</h2>
+        <div class="otp-info">
+          <p>We sent a <strong>6-digit verification code</strong> to:</p>
+          <p class="email-display" id="otp-mail"></p>
+          <p class="form-hint">Check your inbox (and spam folder) for the code</p>
+        </div>
 
         <form id="form-otp">
-          <input id="otp-code" type="text" inputmode="numeric" maxlength="6" placeholder="6-digit code" required>
-          <button class="btn primary" type="submit">Verify</button>
+          <input 
+            id="otp-code" 
+            type="text" 
+            inputmode="numeric" 
+            maxlength="6" 
+            placeholder="Enter 6-digit code" 
+            required
+            autocomplete="one-time-code"
+            aria-describedby="otp-hint"
+          >
+          <p id="otp-hint" class="form-hint">Enter the code from your email</p>
+          <button class="btn primary" type="submit">Verify Email</button>
         </form>
 
         <p id="err-otp" class="error" role="alert"></p>
-        <button class="btn link" id="otp-resend">Resend code</button>
+        
+        <div class="auth-actions">
+          <button class="btn link" id="otp-resend">Resend code</button>
+          <button class="btn link" id="back-otp">← Use different email</button>
+        </div>
       </article>
     </section>
 
-    <!-- 5 ▸ profile setup -->
+    <!-- Profile Setup Step -->
     <section id="step-profile" class="panel" aria-labelledby="profile-title">
       <article class="card">
-        <h2 id="profile-title">Complete your profile</h2>
+        <h2 id="profile-title">🎯 Complete Your Profile</h2>
+        <p class="hint">Just a few more details to get you started</p>
 
-        <p class="hint">Set your username and password to complete registration.</p>
+        <form id="form-profile" autocomplete="off">
+          <div class="form-group">
+            <label for="profile-user">Choose Username *</label>
+            <input 
+              id="profile-user" 
+              type="text" 
+              placeholder="Enter username (3+ characters)" 
+              required 
+              minlength="3"
+              maxlength="30"
+              pattern="[a-zA-Z0-9_]+"
+              autocomplete="username"
+              aria-describedby="username-hint"
+            >
+            <small id="username-hint" class="form-help">
+              Letters, numbers, and underscores only. This will be your public display name.
+            </small>
+          </div>
 
-        <form id="form-profile" autocomplete="new-password">
-          <input id="profile-user" type="text" placeholder="Username" required minlength="3">
-          <input id="profile-pass" type="password" placeholder="Password (≥6)" minlength="6" required>
-          <input id="profile-pass2" type="password" placeholder="Confirm password" minlength="6" required>
-          <button class="btn primary" type="submit">Complete registration</button>
+          <div class="form-group">
+            <label for="profile-pass">Create Password *</label>
+            <input 
+              id="profile-pass" 
+              type="password" 
+              placeholder="Password (6+ characters)" 
+              minlength="6" 
+              required
+              autocomplete="new-password"
+              aria-describedby="password-hint"
+            >
+            <small id="password-hint" class="form-help">
+              At least 6 characters. Make it strong to keep your account secure.
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="profile-pass2">Confirm Password *</label>
+            <input 
+              id="profile-pass2" 
+              type="password" 
+              placeholder="Confirm your password" 
+              minlength="6" 
+              required
+              autocomplete="new-password"
+              aria-describedby="confirm-hint"
+            >
+            <small id="confirm-hint" class="form-help">
+              Re-enter your password to confirm
+            </small>
+          </div>
+
+          <div class="form-group">
+            <label for="profile-name">Full Name (Optional)</label>
+            <input 
+              id="profile-name" 
+              type="text" 
+              placeholder="Your full name" 
+              maxlength="100"
+              autocomplete="name"
+            >
+            <small class="form-help">
+              This helps others recognize you (you can change this later)
+            </small>
+          </div>
+
+          <button class="btn primary" type="submit">🚀 Start Learning & Sharing</button>
         </form>
 
         <p id="err-profile" class="error" role="alert"></p>
+        
+        <div class="welcome-message">
+          <p class="info">
+            🎉 <strong>Almost there!</strong> Complete your profile to join the SecretShare community.
+          </p>
+        </div>
+      </article>
+    </section>
+
+    <!-- Password Reset Step -->
+    <section id="step-reset" class="panel" aria-labelledby="reset-title">
+      <article class="card">
+        <h2 id="reset-title">🔑 Reset Password</h2>
+        <p class="hint">We'll send you a password reset link</p>
+
+        <form id="form-reset">
+          <input 
+            id="reset-email" 
+            type="email" 
+            placeholder="Enter your email address" 
+            required
+            autocomplete="email"
+          >
+          <button class="btn primary" type="submit">Send Reset Link</button>
+        </form>
+
+        <p id="err-reset" class="error" role="alert"></p>
+        <button class="btn link" id="back-reset">← Back to sign in</button>
       </article>
     </section>
 
   </main>
 
-  <!-- libs -->
+  <!-- Loading overlay -->
+  <div id="loading-overlay" class="loading-overlay hidden">
+    <div class="loading-content">
+      <div class="loading-spinner"></div>
+      <p>Processing...</p>
+    </div>
+  </div>
+
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
   <script src="config.js"></script>
   <script src="auth.js"></script>
