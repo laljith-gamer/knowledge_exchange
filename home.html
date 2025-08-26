@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Dashboard - Home</title>
+  <title>SecretShare - Knowledge Feed</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dashboard-body">
@@ -11,12 +11,12 @@
     <!-- Navigation -->
     <nav class="dashboard-nav">
       <div class="nav-brand">
-        <h3>Dashboard</h3>
+        <h3>🔒 SecretShare</h3>
       </div>
       <div class="nav-links">
         <a href="home.html" class="nav-link active">
           <span class="nav-icon">🏠</span>
-          Home
+          Feed
         </a>
         <a href="profile.html" class="nav-link">
           <span class="nav-icon">👤</span>
@@ -24,7 +24,7 @@
         </a>
         <a href="createone.html" class="nav-link">
           <span class="nav-icon">➕</span>
-          Create One
+          Share Secret
         </a>
       </div>
       <button class="btn secondary logout-btn" id="logout">Sign out</button>
@@ -32,53 +32,270 @@
 
     <!-- Main Content -->
     <main class="dashboard-main">
-      <div class="dashboard-content">
-        <div class="page-header">
-          <h1>Welcome to Dashboard</h1>
-          <p class="page-subtitle">Your home base for managing everything</p>
+      <div class="social-feed">
+        <div class="feed-header">
+          <h1>Knowledge Feed</h1>
+          <p class="feed-subtitle">Discover and learn secret techniques from experts</p>
         </div>
 
-        <div class="dashboard-grid">
-          <div class="dashboard-card">
-            <div class="card-icon">📊</div>
-            <h3>Analytics</h3>
-            <p>View your statistics and performance metrics</p>
-            <div class="card-stats">
-              <span class="stat-number">0</span>
-              <span class="stat-label">Total Items</span>
-            </div>
+        <!-- Stories/Categories -->
+        <div class="stories-container">
+          <div class="story-item">
+            <div class="story-avatar">💻</div>
+            <span>Programming</span>
           </div>
-
-          <div class="dashboard-card">
-            <div class="card-icon">📋</div>
-            <h3>Recent Activity</h3>
-            <p>Your latest actions and updates</p>
-            <div class="activity-list">
-              <p class="no-activity">No recent activity</p>
-            </div>
+          <div class="story-item">
+            <div class="story-avatar">🍳</div>
+            <span>Cooking</span>
           </div>
-
-          <div class="dashboard-card">
-            <div class="card-icon">⚡</div>
-            <h3>Quick Actions</h3>
-            <p>Common tasks and shortcuts</p>
-            <div class="quick-actions">
-              <button class="btn primary small">New Item</button>
-              <button class="btn secondary small">View All</button>
-            </div>
+          <div class="story-item">
+            <div class="story-avatar">🎨</div>
+            <span>Art & Design</span>
           </div>
+          <div class="story-item">
+            <div class="story-avatar">📈</div>
+            <span>Business</span>
+          </div>
+          <div class="story-item">
+            <div class="story-avatar">🏃</div>
+            <span>Fitness</span>
+          </div>
+          <div class="story-item">
+            <div class="story-avatar">🎵</div>
+            <span>Music</span>
+          </div>
+        </div>
 
-          <div class="dashboard-card">
-            <div class="card-icon">🎯</div>
-            <h3>Goals</h3>
-            <p>Track your progress and achievements</p>
-            <div class="progress-bar">
-              <div class="progress-fill" style="width: 0%"></div>
+        <!-- Feed Posts -->
+        <div class="feed-posts" id="feed-posts">
+          
+          <!-- Sample Post 1 -->
+          <article class="post-card">
+            <div class="post-header">
+              <div class="user-info">
+                <div class="user-avatar">👨‍💻</div>
+                <div class="user-details">
+                  <h4>CodeMaster_99</h4>
+                  <span class="post-time">2 hours ago • Programming</span>
+                </div>
+              </div>
+              <button class="post-options">⋯</button>
             </div>
-            <span class="progress-text">0% Complete</span>
+            
+            <div class="post-content">
+              <div class="post-image">
+                <div class="content-preview">
+                  <h3>🔥 Secret CSS Animation Technique</h3>
+                  <p class="content-teaser">A hidden method to create smooth animations that most developers don't know...</p>
+                  <div class="blur-overlay">
+                    <div class="unlock-icon">🔓</div>
+                    <p>Double tap to request access</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="post-description">
+                <p><strong>My secret CSS animation technique</strong> that I've developed over 5 years. This method reduces animation lag by 80% and works on all browsers!</p>
+                <div class="post-tags">
+                  <span class="tag">#css</span>
+                  <span class="tag">#animation</span>
+                  <span class="tag">#webdev</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="post-actions">
+              <button class="action-btn double-tap-btn" data-post-id="1">
+                <span class="heart-icon">🤍</span>
+                <span>Double Tap to Request</span>
+              </button>
+              <button class="action-btn comment-btn">
+                <span>💬</span>
+                <span>12 Comments</span>
+              </button>
+              <button class="action-btn share-btn">
+                <span>📤</span>
+                <span>Share</span>
+              </button>
+            </div>
+            
+            <div class="post-stats">
+              <p><strong>24 people</strong> want to learn this secret</p>
+              <div class="teaching-method">
+                <span class="method-tag contract">💰 Contract Required</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Sample Post 2 -->
+          <article class="post-card">
+            <div class="post-header">
+              <div class="user-info">
+                <div class="user-avatar">👩‍🍳</div>
+                <div class="user-details">
+                  <h4>ChefSecrets</h4>
+                  <span class="post-time">5 hours ago • Cooking</span>
+                </div>
+              </div>
+              <button class="post-options">⋯</button>
+            </div>
+            
+            <div class="post-content">
+              <div class="post-image">
+                <div class="content-preview cooking">
+                  <h3>🍝 Perfect Pasta Every Time</h3>
+                  <p class="content-teaser">The one ingredient that changes everything in pasta cooking...</p>
+                  <div class="blur-overlay">
+                    <div class="unlock-icon">🔓</div>
+                    <p>Double tap to request access</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="post-description">
+                <p><strong>My grandmother's secret ingredient</strong> that makes pasta 10x more flavorful. Michelin star chefs would pay thousands for this!</p>
+                <div class="post-tags">
+                  <span class="tag">#cooking</span>
+                  <span class="tag">#pasta</span>
+                  <span class="tag">#secret</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="post-actions">
+              <button class="action-btn double-tap-btn" data-post-id="2">
+                <span class="heart-icon">🤍</span>
+                <span>Double Tap to Request</span>
+              </button>
+              <button class="action-btn comment-btn">
+                <span>💬</span>
+                <span>8 Comments</span>
+              </button>
+              <button class="action-btn share-btn">
+                <span>📤</span>
+                <span>Share</span>
+              </button>
+            </div>
+            
+            <div class="post-stats">
+              <p><strong>156 people</strong> want to learn this secret</p>
+              <div class="teaching-method">
+                <span class="method-tag free">💚 Teaching for Free</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Sample Post 3 -->
+          <article class="post-card">
+            <div class="post-header">
+              <div class="user-info">
+                <div class="user-avatar">🎨</div>
+                <div class="user-details">
+                  <h4>DesignGuru</h4>
+                  <span class="post-time">1 day ago • Design</span>
+                </div>
+              </div>
+              <button class="post-options">⋯</button>
+            </div>
+            
+            <div class="post-content">
+              <div class="post-image">
+                <div class="content-preview design">
+                  <h3>🎯 Logo Design Psychology</h3>
+                  <p class="content-teaser">How to make clients say "YES" to your designs instantly...</p>
+                  <div class="blur-overlay">
+                    <div class="unlock-icon">🔓</div>
+                    <p>Double tap to request access</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="post-description">
+                <p><strong>The psychology trick</strong> I use to get 95% client approval rate on first design. Increased my income by 300%!</p>
+                <div class="post-tags">
+                  <span class="tag">#design</span>
+                  <span class="tag">#psychology</span>
+                  <span class="tag">#business</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="post-actions">
+              <button class="action-btn double-tap-btn" data-post-id="3">
+                <span class="heart-icon">🤍</span>
+                <span>Double Tap to Request</span>
+              </button>
+              <button class="action-btn comment-btn">
+                <span>💬</span>
+                <span>23 Comments</span>
+              </button>
+              <button class="action-btn share-btn">
+                <span>📤</span>
+                <span>Share</span>
+              </button>
+            </div>
+            
+            <div class="post-stats">
+              <p><strong>89 people</strong> want to learn this secret</p>
+              <div class="teaching-method">
+                <span class="method-tag exchange">🔄 Skill Exchange Only</span>
+              </div>
+            </div>
+          </article>
+
+        </div>
+      </div>
+
+      <!-- Request Modal -->
+      <div id="request-modal" class="modal hidden">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h3>Request Access to Secret</h3>
+            <button class="close-modal">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div class="requester-info">
+              <div class="user-avatar">👤</div>
+              <div>
+                <h4 id="modal-username">Your Username</h4>
+                <p>Wants to learn your secret technique</p>
+              </div>
+            </div>
+            
+            <form id="request-form">
+              <div class="form-group">
+                <label>Why do you want to learn this?</label>
+                <textarea id="request-reason" placeholder="Explain why you're interested in this secret..." required></textarea>
+              </div>
+              
+              <div class="form-group">
+                <label>What can you offer in return?</label>
+                <div class="offer-options">
+                  <label class="offer-option">
+                    <input type="radio" name="offer-type" value="skill">
+                    <span>🎯 Share my skill</span>
+                  </label>
+                  <label class="offer-option">
+                    <input type="radio" name="offer-type" value="payment">
+                    <span>💰 Payment</span>
+                  </label>
+                  <label class="offer-option">
+                    <input type="radio" name="offer-type" value="favor">
+                    <span>🤝 Future favor</span>
+                  </label>
+                </div>
+                <textarea id="offer-details" placeholder="Describe your offer..." required></textarea>
+              </div>
+              
+              <div class="modal-actions">
+                <button type="button" class="btn secondary" id="cancel-request">Cancel</button>
+                <button type="submit" class="btn primary">Send Request</button>
+              </div>
+            </form>
           </div>
         </div>
       </div>
+
     </main>
   </div>
 
