@@ -11,6 +11,8 @@ const showMessage = (id, msg, type = "info") => {
   }
 };
 
+let currentUser = null;
+
 /* ---------- boot ---------- */
 document.addEventListener("DOMContentLoaded", async () => {
   const {
@@ -22,87 +24,34 @@ document.addEventListener("DOMContentLoaded", async () => {
     return;
   }
 
+  currentUser = session.user;
   loadUserData(session.user);
   bindDashboardEvents();
-  initializeSocialFeatures();
+
+  // Load videos if on home page
+  if (window.location.pathname.includes("home.html")) {
+    loadVideoFeed();
+  }
 });
 
 /* ---------- load user data ---------- */
 function loadUserData(user) {
-  // Update profile info if elements exist
   const profileName = $("profile-name");
   const profileEmail = $("profile-email");
   const profileDate = $("profile-date");
-  const avatarText = $("avatar-text");
-  const modalUsername = $("modal-username");
-  const previewUsername = $("preview-username");
 
   const username = user.user_metadata?.username || "User";
-  const firstLetter = username.charAt(0).toUpperCase();
 
   if (profileName) profileName.textContent = username;
   if (profileEmail) profileEmail.textContent = user.email;
   if (profileDate)
     profileDate.textContent = new Date(user.created_at).toLocaleDateString();
-  if (avatarText) avatarText.textContent = firstLetter;
-  if (modalUsername) modalUsername.textContent = username;
-  if (previewUsername) previewUsername.textContent = username;
 
-  // Pre-fill profile form if it exists
   const updateUsername = $("update-username");
   const updateEmail = $("update-email");
 
   if (updateUsername) updateUsername.value = username;
   if (updateEmail) updateEmail.value = user.email;
-}
-
-/* ---------- social media features ---------- */
-function initializeSocialFeatures() {
-  // Double tap functionality
-  const doubleTapBtns = document.querySelectorAll(".double-tap-btn");
-  doubleTapBtns.forEach((btn) => {
-    let tapCount = 0;
-    btn.addEventListener("click", (e) => {
-      tapCount++;
-      if (tapCount === 1) {
-        setTimeout(() => {
-          if (tapCount === 1) {
-            // Single tap - show preview or basic info
-            console.log("Single tap");
-          } else if (tapCount === 2) {
-            // Double tap - show request modal
-            const postId = btn.dataset.postId;
-            showRequestModal(postId);
-          }
-          tapCount = 0;
-        }, 300);
-      }
-    });
-  });
-
-  // Preview form updates
-  updatePreview();
-}
-
-/* ---------- request modal ---------- */
-function showRequestModal(postId) {
-  const modal = $("request-modal");
-  if (modal) {
-    modal.classList.remove("hidden");
-
-    // Store post ID for form submission
-    const form = $("request-form");
-    if (form) {
-      form.dataset.postId = postId;
-    }
-  }
-}
-
-function hideRequestModal() {
-  const modal = $("request-modal");
-  if (modal) {
-    modal.classList.add("hidden");
-  }
 }
 
 /* ---------- dashboard events ---------- */
@@ -113,285 +62,363 @@ function bindDashboardEvents() {
     logoutBtn.onclick = logout;
   }
 
-  // Profile update form
-  const updateProfileForm = $("update-profile");
-  if (updateProfileForm) {
-    updateProfileForm.onsubmit = updateProfile;
-  }
+  // Video upload form
+  const uploadForm = $("upload-form");
+  if (uploadForm) {
+    uploadForm.onsubmit = uploadVideo;
 
-  // Change password form
-  const changePasswordForm = $("change-password");
-  if (changePasswordForm) {
-    changePasswordForm.onsubmit = changePassword;
-  }
+    // File input change
+    const videoFile = $("video-file");
+    if (videoFile) {
+      videoFile.onchange = handleVideoSelect;
+    }
 
-  // Create secret form
-  const createSecretForm = $("create-secret-form");
-  if (createSecretForm) {
-    createSecretForm.onsubmit = createSecret;
-
-    // Form field listeners for preview
-    ["secret-title", "secret-teaser", "secret-category"].forEach((id) => {
-      const el = $(id);
-      if (el) {
-        el.addEventListener("input", updatePreview);
-      }
-    });
-
-    // Teaching method change
-    const teachingMethods = document.querySelectorAll(
-      'input[name="teaching-method"]'
-    );
-    teachingMethods.forEach((method) => {
-      method.addEventListener("change", (e) => {
-        updatePreview();
-        showMethodDetails(e.target.value);
-      });
-    });
+    // Remove video
+    const removeVideo = $("remove-video");
+    if (removeVideo) {
+      removeVideo.onclick = removeVideoPreview;
+    }
 
     // Character counters
-    const titleInput = $("secret-title");
-    const teaserInput = $("secret-teaser");
+    const titleInput = $("video-title");
+    const descInput = $("video-description");
+
     if (titleInput) {
       titleInput.addEventListener("input", () =>
-        updateCharCount("secret-title", 100)
+        updateCharCount("video-title", 200)
       );
     }
-    if (teaserInput) {
-      teaserInput.addEventListener("input", () =>
-        updateCharCount("secret-teaser", 200)
+    if (descInput) {
+      descInput.addEventListener("input", () =>
+        updateCharCount("video-description", 500)
       );
     }
   }
 
-  // Request modal events
-  const closeModal = document.querySelector(".close-modal");
-  const cancelRequest = $("cancel-request");
-  const requestForm = $("request-form");
-
-  if (closeModal) closeModal.onclick = hideRequestModal;
-  if (cancelRequest) cancelRequest.onclick = hideRequestModal;
-  if (requestForm) requestForm.onsubmit = submitRequest;
-
-  // Add step functionality
-  const addStepBtn = $("add-step");
-  if (addStepBtn) {
-    addStepBtn.onclick = addStep;
-  }
-
-  // Remove step functionality
-  document.addEventListener("click", (e) => {
-    if (e.target.classList.contains("remove-step")) {
-      e.target.parentElement.remove();
-    }
-  });
-}
-
-/* ---------- preview updates ---------- */
-function updatePreview() {
-  const titleEl = $("secret-title");
-  const teaserEl = $("secret-teaser");
-  const categoryEl = $("secret-category");
-  const teachingMethod = document.querySelector(
-    'input[name="teaching-method"]:checked'
-  );
-
-  const previewTitle = $("preview-title");
-  const previewTeaser = $("preview-teaser");
-  const previewCategory = $("preview-category");
-  const previewMethod = $("preview-method");
-
-  if (previewTitle && titleEl) {
-    previewTitle.textContent = titleEl.value || "Your Secret Title";
-  }
-
-  if (previewTeaser && teaserEl) {
-    previewTeaser.textContent =
-      teaserEl.value || "Your teaser will appear here...";
-  }
-
-  if (previewCategory && categoryEl) {
-    const selectedOption = categoryEl.options[categoryEl.selectedIndex];
-    previewCategory.textContent =
-      selectedOption.textContent.split(" ").slice(1).join(" ") || "Category";
-  }
-
-  if (previewMethod && teachingMethod) {
-    const methodLabels = {
-      free: "💚 Teaching for Free",
-      exchange: "🔄 Skill Exchange Only",
-      contract: "💰 Contract Required",
-      mood: "😊 Based on Mood",
-    };
-    previewMethod.textContent =
-      methodLabels[teachingMethod.value] || "Select teaching method";
-    previewMethod.className = `method-tag ${teachingMethod.value}`;
+  // Load more videos
+  const loadMoreBtn = $("load-more");
+  if (loadMoreBtn) {
+    loadMoreBtn.onclick = loadMoreVideos;
   }
 }
 
+/* ---------- video upload ---------- */
+function handleVideoSelect(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Check file size (100MB max)
+  if (file.size > 100 * 1024 * 1024) {
+    showMessage("upload-message", "File size must be less than 100MB", "error");
+    e.target.value = "";
+    return;
+  }
+
+  // Show preview
+  const preview = $("video-preview");
+  const video = preview.querySelector("video");
+  const uploadArea = $("video-upload-area");
+
+  video.src = URL.createObjectURL(file);
+  preview.classList.remove("hidden");
+  uploadArea.style.display = "none";
+}
+
+function removeVideoPreview() {
+  const preview = $("video-preview");
+  const video = preview.querySelector("video");
+  const uploadArea = $("video-upload-area");
+  const fileInput = $("video-file");
+
+  video.src = "";
+  preview.classList.add("hidden");
+  uploadArea.style.display = "block";
+  fileInput.value = "";
+}
+
+async function uploadVideo(e) {
+  e.preventDefault();
+
+  const fileInput = $("video-file");
+  const title = $("video-title").value.trim();
+  const description = $("video-description").value.trim();
+
+  if (!fileInput.files[0]) {
+    showMessage("upload-message", "Please select a video file", "error");
+    return;
+  }
+
+  if (!title) {
+    showMessage("upload-message", "Please enter a title", "error");
+    return;
+  }
+
+  const file = fileInput.files[0];
+  const uploadBtn = $("upload-btn");
+  const progressSection = $("upload-progress-section");
+  const progressBar = $("upload-progress");
+  const progressStatus = $("upload-status");
+
+  try {
+    // Disable form
+    uploadBtn.disabled = true;
+    uploadBtn.textContent = "Uploading...";
+    progressSection.style.display = "block";
+
+    // Create unique filename
+    const fileExt = file.name.split(".").pop();
+    const fileName = `${Date.now()}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}.${fileExt}`;
+    const filePath = `videos/${currentUser.id}/${fileName}`;
+
+    progressStatus.textContent = "Uploading video...";
+
+    // Upload video to storage
+    const { data: uploadData, error: uploadError } = await sb.storage
+      .from("videos")
+      .upload(filePath, file, {
+        onUploadProgress: (progress) => {
+          const percent = (progress.loaded / progress.total) * 100;
+          progressBar.style.width = `${percent}%`;
+          progressStatus.textContent = `Uploading: ${Math.round(percent)}%`;
+        },
+      });
+
+    if (uploadError) throw uploadError;
+
+    progressStatus.textContent = "Getting video URL...";
+
+    // Get public URL
+    const { data: urlData } = sb.storage.from("videos").getPublicUrl(filePath);
+
+    progressStatus.textContent = "Saving video details...";
+
+    // Save video details to database
+    const { data: videoData, error: dbError } = await sb
+      .from("videos")
+      .insert({
+        user_id: currentUser.id,
+        title: title,
+        description: description,
+        video_url: urlData.publicUrl,
+      })
+      .select();
+
+    if (dbError) throw dbError;
+
+    showMessage("upload-message", "Video uploaded successfully! 🎉", "success");
+
+    // Reset form
+    e.target.reset();
+    removeVideoPreview();
+    progressSection.style.display = "none";
+
+    // Redirect to home after delay
+    setTimeout(() => {
+      window.location.href = "home.html";
+    }, 2000);
+  } catch (error) {
+    console.error("Upload error:", error);
+    showMessage("upload-message", error.message || "Upload failed", "error");
+  } finally {
+    uploadBtn.disabled = false;
+    uploadBtn.textContent = "🚀 Upload Video";
+    progressBar.style.width = "0%";
+  }
+}
+
+/* ---------- video feed ---------- */
+let videosLoaded = 0;
+const videosPerPage = 10;
+
+async function loadVideoFeed() {
+  const loading = $("loading");
+  const feedVideos = $("feed-videos");
+
+  try {
+    loading.style.display = "block";
+
+    const { data: videos, error } = await sb
+      .from("videos")
+      .select(
+        `
+        *,
+        profiles:user_id (username, avatar_url)
+      `
+      )
+      .eq("is_published", true)
+      .order("created_at", { ascending: false })
+      .range(0, videosPerPage - 1);
+
+    if (error) throw error;
+
+    loading.style.display = "none";
+
+    if (videos && videos.length > 0) {
+      videos.forEach((video) => {
+        feedVideos.appendChild(createVideoCard(video));
+      });
+      videosLoaded = videos.length;
+    } else {
+      feedVideos.innerHTML =
+        '<div class="no-videos"><p>No videos yet. Be the first to upload!</p></div>';
+    }
+  } catch (error) {
+    console.error("Error loading videos:", error);
+    loading.style.display = "none";
+    feedVideos.innerHTML =
+      '<div class="error"><p>Error loading videos</p></div>';
+  }
+}
+
+async function loadMoreVideos() {
+  const loadMoreBtn = $("load-more");
+  const feedVideos = $("feed-videos");
+
+  try {
+    loadMoreBtn.textContent = "Loading...";
+    loadMoreBtn.disabled = true;
+
+    const { data: videos, error } = await sb
+      .from("videos")
+      .select(
+        `
+        *,
+        profiles:user_id (username, avatar_url)
+      `
+      )
+      .eq("is_published", true)
+      .order("created_at", { ascending: false })
+      .range(videosLoaded, videosLoaded + videosPerPage - 1);
+
+    if (error) throw error;
+
+    if (videos && videos.length > 0) {
+      videos.forEach((video) => {
+        feedVideos.appendChild(createVideoCard(video));
+      });
+      videosLoaded += videos.length;
+    }
+
+    if (videos.length < videosPerPage) {
+      loadMoreBtn.style.display = "none";
+    }
+  } catch (error) {
+    console.error("Error loading more videos:", error);
+  } finally {
+    loadMoreBtn.textContent = "Load More Videos";
+    loadMoreBtn.disabled = false;
+  }
+}
+
+function createVideoCard(video) {
+  const card = document.createElement("article");
+  card.className = "video-card";
+
+  const timeAgo = getTimeAgo(new Date(video.created_at));
+  const username = video.profiles?.username || "Unknown User";
+  const avatarLetter = username.charAt(0).toUpperCase();
+
+  card.innerHTML = `
+    <div class="video-header">
+      <div class="user-info">
+        <div class="user-avatar">${avatarLetter}</div>
+        <div class="user-details">
+          <h4>${username}</h4>
+          <span class="post-time">${timeAgo}</span>
+        </div>
+      </div>
+    </div>
+    
+    <div class="video-container">
+      <video controls preload="metadata">
+        <source src="${video.video_url}" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    </div>
+    
+    <div class="video-content">
+      <h3 class="video-title">${video.title}</h3>
+      ${
+        video.description
+          ? `<p class="video-description">${video.description}</p>`
+          : ""
+      }
+    </div>
+    
+    <div class="video-actions">
+      <button class="action-btn like-btn" data-video-id="${video.id}">
+        <span>❤️</span>
+        <span>${video.likes_count || 0} Likes</span>
+      </button>
+      <button class="action-btn">
+        <span>👁️</span>
+        <span>${video.views_count || 0} Views</span>
+      </button>
+    </div>
+  `;
+
+  // Add like functionality
+  const likeBtn = card.querySelector(".like-btn");
+  likeBtn.onclick = () => toggleLike(video.id, likeBtn);
+
+  return card;
+}
+
+async function toggleLike(videoId, likeBtn) {
+  try {
+    const { data: existingLike } = await sb
+      .from("video_likes")
+      .select()
+      .eq("video_id", videoId)
+      .eq("user_id", currentUser.id)
+      .single();
+
+    if (existingLike) {
+      // Unlike
+      await sb
+        .from("video_likes")
+        .delete()
+        .eq("video_id", videoId)
+        .eq("user_id", currentUser.id);
+
+      likeBtn.classList.remove("liked");
+    } else {
+      // Like
+      await sb
+        .from("video_likes")
+        .insert({ video_id: videoId, user_id: currentUser.id });
+
+      likeBtn.classList.add("liked");
+    }
+  } catch (error) {
+    console.error("Error toggling like:", error);
+  }
+}
+
+/* ---------- utility functions ---------- */
 function updateCharCount(inputId, maxLength) {
   const input = $(inputId);
-  const counter = input.nextElementSibling;
-  if (counter && counter.classList.contains("char-count")) {
+  const counter = input.parentElement.querySelector(".char-count");
+  if (counter) {
     const currentLength = input.value.length;
     counter.textContent = `${currentLength}/${maxLength}`;
     counter.style.color = currentLength > maxLength ? "#dc3545" : "#6c757d";
   }
 }
 
-function showMethodDetails(method) {
-  const exchangeDetails = $("exchange-details");
-  const contractDetails = $("contract-details");
+function getTimeAgo(date) {
+  const now = new Date();
+  const diff = now - date;
+  const minutes = Math.floor(diff / 60000);
+  const hours = Math.floor(diff / 3600000);
+  const days = Math.floor(diff / 86400000);
 
-  if (exchangeDetails) {
-    exchangeDetails.style.display = method === "exchange" ? "block" : "none";
-  }
-
-  if (contractDetails) {
-    contractDetails.style.display = method === "contract" ? "block" : "none";
-  }
-}
-
-/* ---------- form submissions ---------- */
-async function createSecret(e) {
-  e.preventDefault();
-
-  const formData = {
-    title: $("secret-title").value,
-    category: $("secret-category").value,
-    teaser: $("secret-teaser").value,
-    content: $("secret-content").value,
-    tags: $("secret-tags").value,
-    teachingMethod: document.querySelector(
-      'input[name="teaching-method"]:checked'
-    )?.value,
-    visibility: document.querySelector('input[name="visibility"]:checked')
-      ?.value,
-    allowComments: $("allow-comments")?.checked,
-    notifyRequests: $("notify-requests")?.checked,
-  };
-
-  // Validate required fields
-  if (
-    !formData.title ||
-    !formData.category ||
-    !formData.teaser ||
-    !formData.content
-  ) {
-    showMessage(
-      "create-message",
-      "Please fill in all required fields",
-      "error"
-    );
-    return;
-  }
-
-  // Simulate saving (implement actual database logic here)
-  showMessage("create-message", "Secret shared successfully! 🎉", "success");
-  setTimeout(() => {
-    window.location.href = "home.html";
-  }, 2000);
-}
-
-async function submitRequest(e) {
-  e.preventDefault();
-
-  const postId = e.target.dataset.postId;
-  const reason = $("request-reason").value;
-  const offerType = document.querySelector(
-    'input[name="offer-type"]:checked'
-  )?.value;
-  const offerDetails = $("offer-details").value;
-
-  if (!reason || !offerType || !offerDetails) {
-    alert("Please fill in all fields");
-    return;
-  }
-
-  // Simulate request submission
-  console.log("Request submitted:", {
-    postId,
-    reason,
-    offerType,
-    offerDetails,
-  });
-
-  hideRequestModal();
-  showMessage("profile-message", "Request sent successfully!", "success");
-
-  // Reset form
-  e.target.reset();
-}
-
-function addStep() {
-  const container = $("steps-container");
-  const stepCount = container.querySelectorAll(".step-input").length + 1;
-
-  const stepDiv = document.createElement("div");
-  stepDiv.className = "step-input";
-  stepDiv.innerHTML = `
-    <input type="text" placeholder="Step ${stepCount}" name="step">
-    <button type="button" class="remove-step">×</button>
-  `;
-
-  container.appendChild(stepDiv);
-}
-
-/* ---------- existing functions ---------- */
-async function updateProfile(e) {
-  e.preventDefault();
-  const username = $("update-username").value.trim();
-
-  if (!username) {
-    showMessage("profile-message", "Username is required", "error");
-    return;
-  }
-
-  try {
-    const { data, error } = await sb.auth.updateUser({
-      data: { username: username },
-    });
-
-    if (error) throw error;
-
-    showMessage("profile-message", "Profile updated successfully!", "success");
-    loadUserData(data.user);
-  } catch (error) {
-    showMessage("profile-message", error.message, "error");
-  }
-}
-
-async function changePassword(e) {
-  e.preventDefault();
-  const newPass = $("new-pass").value;
-  const confirmPass = $("confirm-pass").value;
-
-  if (newPass !== confirmPass) {
-    showMessage("profile-message", "Passwords do not match", "error");
-    return;
-  }
-
-  if (newPass.length < 6) {
-    showMessage(
-      "profile-message",
-      "Password must be at least 6 characters",
-      "error"
-    );
-    return;
-  }
-
-  try {
-    const { error } = await sb.auth.updateUser({
-      password: newPass,
-    });
-
-    if (error) throw error;
-
-    showMessage("profile-message", "Password changed successfully!", "success");
-    e.target.reset();
-  } catch (error) {
-    showMessage("profile-message", error.message, "error");
-  }
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  return `${days}d ago`;
 }
 
 async function logout() {

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>SecretShare - Share Your Knowledge</title>
+  <title>Upload Video</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body class="dashboard-body">
@@ -11,12 +11,12 @@
     <!-- Navigation -->
     <nav class="dashboard-nav">
       <div class="nav-brand">
-        <h3>🔒 SecretShare</h3>
+        <h3>📹 VideoShare</h3>
       </div>
       <div class="nav-links">
         <a href="home.html" class="nav-link">
           <span class="nav-icon">🏠</span>
-          Feed
+          Home
         </a>
         <a href="profile.html" class="nav-link">
           <span class="nav-icon">👤</span>
@@ -24,7 +24,7 @@
         </a>
         <a href="createone.html" class="nav-link active">
           <span class="nav-icon">➕</span>
-          Share Secret
+          Upload
         </a>
       </div>
       <button class="btn secondary logout-btn" id="logout">Sign out</button>
@@ -32,336 +32,74 @@
 
     <!-- Main Content -->
     <main class="dashboard-main">
-      <div class="create-secret-container">
+      <div class="upload-container">
         <div class="page-header">
-          <h1>Share Your Secret Knowledge</h1>
-          <p class="page-subtitle">Turn your expertise into valuable knowledge that others can learn from</p>
+          <h1>Upload Your Video</h1>
+          <p class="page-subtitle">Share your moments with the world</p>
         </div>
 
-        <div class="create-form-container">
-          <form id="create-secret-form" class="secret-form">
+        <div class="upload-form-container">
+          <form id="upload-form" class="video-form">
             
-            <!-- Basic Information -->
+            <!-- Video Upload -->
             <div class="form-section">
-              <h3>📝 Basic Information</h3>
+              <h3>🎬 Video Upload</h3>
               
               <div class="form-group">
-                <label for="secret-title">Secret Title *</label>
-                <input id="secret-title" type="text" placeholder="e.g., My Secret CSS Animation Technique" required maxlength="100">
-                <small class="char-count">0/100</small>
+                <label for="video-file">Select Video *</label>
+                <div class="file-upload-area" id="video-upload-area">
+                  <input id="video-file" type="file" accept="video/*" required>
+                  <div class="upload-placeholder">
+                    <div class="upload-icon">📹</div>
+                    <p>Click to select video or drag and drop</p>
+                    <small>Supported formats: MP4, MOV, AVI (Max: 100MB)</small>
+                  </div>
+                </div>
+                <div id="video-preview" class="video-preview hidden">
+                  <video controls></video>
+                  <button type="button" id="remove-video" class="remove-btn">Remove</button>
+                </div>
               </div>
+            </div>
+
+            <!-- Video Details -->
+            <div class="form-section">
+              <h3>📝 Video Details</h3>
               
               <div class="form-group">
-                <label for="secret-category">Category *</label>
-                <select id="secret-category" required>
-                  <option value="">Choose category...</option>
-                  <option value="programming">💻 Programming</option>
-                  <option value="cooking">🍳 Cooking</option>
-                  <option value="design">🎨 Art & Design</option>
-                  <option value="business">📈 Business</option>
-                  <option value="fitness">🏃 Fitness</option>
-                  <option value="music">🎵 Music</option>
-                  <option value="photography">📷 Photography</option>
-                  <option value="marketing">📢 Marketing</option>
-                  <option value="writing">✍️ Writing</option>
-                  <option value="lifestyle">🌟 Lifestyle</option>
-                  <option value="finance">💰 Finance</option>
-                  <option value="education">🎓 Education</option>
-                  <option value="health">🏥 Health</option>
-                  <option value="travel">✈️ Travel</option>
-                  <option value="gaming">🎮 Gaming</option>
-                  <option value="other">🔧 Other</option>
-                </select>
-              </div>
-              
-              <div class="form-group">
-                <label for="secret-teaser">Teaser Description *</label>
-                <textarea id="secret-teaser" placeholder="Write a compelling teaser that makes people curious... (This will be visible to everyone)" required maxlength="200" rows="3"></textarea>
+                <label for="video-title">Title *</label>
+                <input id="video-title" type="text" placeholder="Give your video a catchy title..." required maxlength="200">
                 <small class="char-count">0/200</small>
               </div>
-
+              
               <div class="form-group">
-                <label for="difficulty-level">Difficulty Level</label>
-                <select id="difficulty-level">
-                  <option value="beginner">🟢 Beginner</option>
-                  <option value="intermediate">🟡 Intermediate</option>
-                  <option value="advanced">🔴 Advanced</option>
-                  <option value="expert">⚫ Expert</option>
-                </select>
+                <label for="video-description">Description</label>
+                <textarea id="video-description" placeholder="Tell people about your video..." rows="4" maxlength="500"></textarea>
+                <small class="char-count">0/500</small>
               </div>
             </div>
 
-            <!-- Secret Content -->
-            <div class="form-section">
-              <h3>🔒 Your Secret Content</h3>
-              <p class="section-note">This content will only be visible to people you approve</p>
-              
-              <div class="form-group">
-                <label for="secret-content">The Secret *</label>
-                <textarea id="secret-content" placeholder="Share your detailed secret technique, method, or knowledge here..." required rows="8"></textarea>
+            <!-- Upload Progress -->
+            <div class="form-section" id="upload-progress-section" style="display: none;">
+              <h3>📤 Uploading...</h3>
+              <div class="progress-bar">
+                <div class="progress-fill" id="upload-progress"></div>
               </div>
-              
-              <div class="form-group">
-                <label for="secret-benefits">What will people learn/gain?</label>
-                <textarea id="secret-benefits" placeholder="Describe the benefits and outcomes of learning your secret..." rows="4"></textarea>
-              </div>
-              
-              <div class="form-group">
-                <label for="secret-steps">Step-by-Step Guide</label>
-                <div id="steps-container">
-                  <div class="step-input">
-                    <input type="text" placeholder="Step 1: Start with..." name="step">
-                    <button type="button" class="remove-step">×</button>
-                  </div>
-                </div>
-                <button type="button" id="add-step" class="btn secondary small">+ Add Step</button>
-              </div>
-
-              <div class="form-group">
-                <label for="requirements">Prerequisites/Requirements</label>
-                <textarea id="requirements" placeholder="What should learners know or have before starting?" rows="3"></textarea>
-              </div>
-              
-              <div class="form-group">
-                <label for="secret-tags">Tags</label>
-                <input id="secret-tags" type="text" placeholder="Enter tags separated by commas (e.g., css, animation, webdev)">
-                <small>Help people find your secret with relevant tags</small>
-              </div>
-            </div>
-
-            <!-- Media Upload -->
-            <div class="form-section">
-              <h3>📸 Media & Resources</h3>
-              
-              <div class="form-group">
-                <label for="cover-image">Cover Image/Thumbnail</label>
-                <input id="cover-image" type="file" accept="image/*">
-                <small>Upload an eye-catching image that represents your secret</small>
-              </div>
-
-              <div class="form-group">
-                <label for="demo-video">Demo Video (Optional)</label>
-                <input id="demo-video" type="url" placeholder="YouTube, Vimeo, or other video URL">
-                <small>Add a video demonstration of your technique</small>
-              </div>
-
-              <div class="form-group">
-                <label for="additional-resources">Additional Resources</label>
-                <textarea id="additional-resources" placeholder="Links to tools, websites, documents, or other helpful resources..." rows="3"></textarea>
-              </div>
-            </div>
-
-            <!-- Teaching Preferences -->
-            <div class="form-section">
-              <h3>🎯 Teaching Preferences</h3>
-              
-              <div class="form-group">
-                <label>How do you want to share this secret?</label>
-                <div class="teaching-options">
-                  <label class="teaching-option">
-                    <input type="radio" name="teaching-method" value="free">
-                    <div class="option-card free">
-                      <div class="option-icon">💚</div>
-                      <h4>Teach for Free</h4>
-                      <p>Share your knowledge with everyone who requests it</p>
-                    </div>
-                  </label>
-                  
-                  <label class="teaching-option">
-                    <input type="radio" name="teaching-method" value="exchange">
-                    <div class="option-card exchange">
-                      <div class="option-icon">🔄</div>
-                      <h4>Skill Exchange</h4>
-                      <p>Only teach in exchange for other valuable skills</p>
-                    </div>
-                  </label>
-                  
-                  <label class="teaching-option">
-                    <input type="radio" name="teaching-method" value="contract">
-                    <div class="option-card contract">
-                      <div class="option-icon">💰</div>
-                      <h4>Contract Required</h4>
-                      <p>Negotiate terms, payment, or specific agreements</p>
-                    </div>
-                  </label>
-                  
-                  <label class="teaching-option">
-                    <input type="radio" name="teaching-method" value="mood">
-                    <div class="option-card mood">
-                      <div class="option-icon">😊</div>
-                      <h4>Based on Mood</h4>
-                      <p>Decide case by case depending on the request</p>
-                    </div>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="form-group" id="exchange-details" style="display: none;">
-                <label for="exchange-preference">What skills are you looking for?</label>
-                <textarea id="exchange-preference" placeholder="Describe what skills or knowledge you'd like to learn in exchange..." rows="3"></textarea>
-              </div>
-              
-              <div class="form-group" id="contract-details" style="display: none;">
-                <label for="contract-terms">Contract Terms</label>
-                <textarea id="contract-terms" placeholder="Describe your typical contract terms, pricing, or requirements..." rows="3"></textarea>
-              </div>
-
-              <div class="form-group">
-                <label for="teaching-format">Preferred Teaching Format</label>
-                <select id="teaching-format">
-                  <option value="text">📄 Written Instructions</option>
-                  <option value="video">📹 Video Call/Tutorial</option>
-                  <option value="audio">🎙️ Audio Call</option>
-                  <option value="document">📋 Detailed Document</option>
-                  <option value="workshop">👥 Group Workshop</option>
-                  <option value="flexible">🔀 Flexible/Student Choice</option>
-                </select>
-              </div>
-
-              <div class="form-group">
-                <label for="max-students">Maximum Students</label>
-                <select id="max-students">
-                  <option value="1">1 person (Exclusive)</option>
-                  <option value="5">Up to 5 people</option>
-                  <option value="10">Up to 10 people</option>
-                  <option value="25">Up to 25 people</option>
-                  <option value="unlimited">Unlimited</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Privacy & Visibility -->
-            <div class="form-section">
-              <h3>👁️ Privacy & Visibility</h3>
-              
-              <div class="form-group">
-                <label>Who can see this secret?</label>
-                <div class="privacy-options">
-                  <label class="privacy-option">
-                    <input type="radio" name="visibility" value="public" checked>
-                    <span>🌍 Everyone</span>
-                    <small>Visible in public feed</small>
-                  </label>
-                  <label class="privacy-option">
-                    <input type="radio" name="visibility" value="followers">
-                    <span>👥 Followers Only</span>
-                    <small>Only your followers can see</small>
-                  </label>
-                  <label class="privacy-option">
-                    <input type="radio" name="visibility" value="premium">
-                    <span>⭐ Premium Users</span>
-                    <small>Only premium members</small>
-                  </label>
-                  <label class="privacy-option">
-                    <input type="radio" name="visibility" value="invite">
-                    <span>🎯 Invite Only</span>
-                    <small>Share privately with specific people</small>
-                  </label>
-                </div>
-              </div>
-              
-              <div class="form-group">
-                <div class="checkbox-options">
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="allow-comments">
-                    <span>💬 Allow comments on this secret</span>
-                  </label>
-                  
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="notify-requests" checked>
-                    <span>🔔 Get notified when someone requests access</span>
-                  </label>
-                  
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="auto-approve">
-                    <span>⚡ Auto-approve requests (for free secrets only)</span>
-                  </label>
-                  
-                  <label class="checkbox-label">
-                    <input type="checkbox" id="featured-request">
-                    <span>🌟 Request to be featured (popular secrets get promoted)</span>
-                  </label>
-                </div>
-              </div>
-
-              <div class="form-group">
-                <label for="expiry-date">Expiry Date (Optional)</label>
-                <input id="expiry-date" type="date">
-                <small>Set when this secret should no longer be available</small>
-              </div>
-            </div>
-
-            <!-- Preview Section -->
-            <div class="form-section">
-              <h3>👀 Preview</h3>
-              <p class="section-note">See how your secret will appear in the feed</p>
-              <div class="secret-preview" id="secret-preview">
-                <div class="preview-post">
-                  <div class="post-header">
-                    <div class="user-info">
-                      <div class="user-avatar" id="preview-avatar">👤</div>
-                      <div class="user-details">
-                        <h4 id="preview-username">Your Username</h4>
-                        <span class="post-time">Just now • <span id="preview-category">Category</span></span>
-                      </div>
-                    </div>
-                    <div class="difficulty-badge" id="preview-difficulty">🟢</div>
-                  </div>
-                  
-                  <div class="post-content">
-                    <div class="post-image">
-                      <div class="content-preview" id="preview-content-bg">
-                        <h3 id="preview-title">Your Secret Title</h3>
-                        <p class="content-teaser" id="preview-teaser">Your teaser will appear here...</p>
-                        <div class="blur-overlay">
-                          <div class="unlock-icon">🔓</div>
-                          <p>Double tap to request access</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="post-stats">
-                    <div class="teaching-method">
-                      <span class="method-tag" id="preview-method">Select teaching method</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <p id="upload-status">Preparing upload...</p>
             </div>
 
             <!-- Submit -->
             <div class="form-actions">
-              <button type="button" class="btn secondary" id="save-draft">💾 Save as Draft</button>
-              <button type="button" class="btn secondary" id="preview-btn">👀 Full Preview</button>
-              <button type="submit" class="btn primary">🚀 Share Secret</button>
+              <button type="button" class="btn secondary" id="save-draft">💾 Save Draft</button>
+              <button type="submit" class="btn primary" id="upload-btn">🚀 Upload Video</button>
             </div>
 
           </form>
         </div>
 
-        <div id="create-message" class="message"></div>
+        <div id="upload-message" class="message"></div>
       </div>
     </main>
-  </div>
-
-  <!-- Full Preview Modal -->
-  <div id="preview-modal" class="modal hidden">
-    <div class="modal-content large">
-      <div class="modal-header">
-        <h3>Full Preview</h3>
-        <button class="close-modal" id="close-preview">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div id="full-preview-content">
-          <!-- Full preview will be generated here -->
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn secondary" id="edit-secret">Edit Secret</button>
-        <button class="btn primary" id="publish-from-preview">Publish Secret</button>
-      </div>
-    </div>
   </div>
 
   <!-- libs -->
