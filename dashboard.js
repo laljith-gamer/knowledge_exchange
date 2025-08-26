@@ -62,6 +62,16 @@ const updateCharCount = (inputId, maxLength) => {
   }
 };
 
+const showLoadingOverlay = (show, message = "Processing...") => {
+  const overlay = $("loading-overlay");
+  if (overlay) {
+    overlay.classList.toggle("hidden", !show);
+    if (show && overlay.querySelector("p")) {
+      overlay.querySelector("p").textContent = message;
+    }
+  }
+};
+
 /* ---------- INITIALIZATION ---------- */
 document.addEventListener("DOMContentLoaded", async () => {
   try {
@@ -227,6 +237,13 @@ function bindDashboardEvents() {
 
   const changePasswordForm = $("change-password");
   if (changePasswordForm) changePasswordForm.onsubmit = changePassword;
+
+  // Close modal when clicking outside
+  window.addEventListener("click", (e) => {
+    if (e.target.classList.contains("modal")) {
+      e.target.classList.add("hidden");
+    }
+  });
 }
 
 function initializeUploadForm() {
@@ -565,12 +582,51 @@ async function createVideoCard(video) {
   return card;
 }
 
-/* ---------- SECRET REQUEST FUNCTIONALITY ---------- */
-function showRequestModal(videoId) {
-  const modal = $("request-modal");
-  if (modal) {
-    modal.classList.remove("hidden");
-    modal.dataset.videoId = videoId;
+/* ---------- SECRET REQUEST FUNCTIONALITY (UPDATED) ---------- */
+async function showRequestModal(videoId) {
+  try {
+    // Check if user already has a pending/approved request
+    const { data: existingRequest, error } = await sb
+      .from("secret_requests")
+      .select("status, created_at")
+      .eq("video_id", videoId)
+      .eq("requester_id", currentUser.id)
+      .single();
+
+    if (existingRequest) {
+      const statusText =
+        existingRequest.status === "pending"
+          ? "Your request is pending approval"
+          : `Your request was ${existingRequest.status}`;
+
+      showMessage("upload-message", statusText, "info");
+      return;
+    }
+
+    // No existing request, show modal
+    const modal = $("request-modal");
+    if (modal) {
+      modal.classList.remove("hidden");
+      modal.dataset.videoId = videoId;
+
+      // Focus first input
+      setTimeout(() => {
+        const reasonInput = $("request-reason");
+        if (reasonInput) reasonInput.focus();
+      }, 100);
+    }
+  } catch (error) {
+    if (error.code === "PGRST116") {
+      // No existing request found, show modal
+      const modal = $("request-modal");
+      if (modal) {
+        modal.classList.remove("hidden");
+        modal.dataset.videoId = videoId;
+      }
+    } else {
+      console.error("Error checking existing request:", error);
+      showMessage("upload-message", "Error checking request status", "error");
+    }
   }
 }
 
@@ -590,6 +646,10 @@ async function handleSecretRequest(e) {
     return;
   }
 
+  const submitBtn = e.target.querySelector('button[type="submit"]');
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Sending...";
+
   try {
     // Get creator ID for the video
     const { data: video, error: videoError } = await sb
@@ -600,36 +660,113 @@ async function handleSecretRequest(e) {
 
     if (videoError) throw videoError;
 
-    // Submit request
-    const { error } = await sb.from("secret_requests").insert({
-      video_id: videoId,
-      requester_id: currentUser.id,
-      creator_id: video.user_id,
-      reason: reason,
-      offer_type: offerType,
-      offer_details: offerDetails,
-    });
+    // Use the safe RPC function (if available) or direct insert with conflict handling
+    try {
+      const { data: result, error: rpcError } = await sb.rpc(
+        "add_secret_request",
+        {
+          p_requester_id: currentUser.id,
+          p_video_id: videoId,
+          p_creator_id: video.user_id,
+          p_reason: reason,
+          p_offer_type: offerType,
+          p_offer_details: offerDetails,
+        }
+      );
 
-    if (error) throw error;
+      if (rpcError) throw rpcError;
 
-    modal.classList.add("hidden");
-    showMessage("upload-message", "Request sent successfully! 🎉", "success");
+      // Handle RPC response
+      if (result && typeof result === "object") {
+        if (result.success) {
+          modal.classList.add("hidden");
+          showMessage("upload-message", result.message, "success");
+        } else {
+          showMessage("upload-message", result.message, "warning");
+        }
+      } else {
+        // RPC function doesn't return detailed response, assume success
+        modal.classList.add("hidden");
+        showMessage(
+          "upload-message",
+          "Request sent successfully! 🎉",
+          "success"
+        );
+      }
+    } catch (rpcError) {
+      // Fallback to direct insert if RPC function doesn't exist
+      const { error: insertError } = await sb.from("secret_requests").insert({
+        video_id: videoId,
+        requester_id: currentUser.id,
+        creator_id: video.user_id,
+        reason: reason,
+        offer_type: offerType,
+        offer_details: offerDetails,
+      });
+
+      if (insertError) {
+        if (insertError.code === "23505") {
+          // Duplicate key error
+          showMessage(
+            "upload-message",
+            "You have already requested access to this video",
+            "warning"
+          );
+        } else {
+          throw insertError;
+        }
+      } else {
+        modal.classList.add("hidden");
+        showMessage(
+          "upload-message",
+          "Request sent successfully! 🎉",
+          "success"
+        );
+      }
+    }
 
     // Reset form
     $("request-reason").value = "";
     $("offer-details").value = "";
-    document.querySelector('input[name="offer-type"]:checked').checked = false;
+    const checkedRadio = document.querySelector(
+      'input[name="offer-type"]:checked'
+    );
+    if (checkedRadio) checkedRadio.checked = false;
 
     // Reload the feed to update request counts
     videosLoaded = 0;
     loadVideoFeed();
   } catch (error) {
     console.error("Request error:", error);
-    showMessage(
-      "upload-message",
-      "Failed to send request. Please try again.",
-      "error"
-    );
+
+    // Handle specific error cases
+    if (error.code === "23505") {
+      showMessage(
+        "upload-message",
+        "You have already requested access to this video",
+        "warning"
+      );
+    } else if (error.message && error.message.includes("duplicate")) {
+      showMessage(
+        "upload-message",
+        "You have already requested access to this video",
+        "warning"
+      );
+    } else {
+      showMessage(
+        "upload-message",
+        "Failed to send request. Please try again.",
+        "error"
+      );
+    }
+
+    // Close modal after error
+    setTimeout(() => {
+      modal.classList.add("hidden");
+    }, 2000);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Send Request";
   }
 }
 
@@ -733,9 +870,9 @@ async function uploadVideo(e) {
   const fileInput = $("video-file");
   const title = $("video-title").value.trim();
   const description = $("video-description").value.trim();
-  const secretPreview = $("secret-preview").value.trim();
+  const secretPreview = $("secret-preview")?.value.trim() || "";
   const category = $("category").value;
-  const isSecret = $("is-secret").checked;
+  const isSecret = $("is-secret")?.checked || false;
   const accessType =
     document.querySelector('input[name="access-type"]:checked')?.value ||
     "free";
@@ -1015,10 +1152,10 @@ function resetUploadForm() {
 
   updateCharCount("video-title", 200);
   updateCharCount("video-description", 500);
-  updateCharCount("secret-preview", 300);
+  if ($("secret-preview")) updateCharCount("secret-preview", 300);
 
-  $("secret-options").classList.add("hidden");
-  $("price-group").style.display = "none";
+  if ($("secret-options")) $("secret-options").classList.add("hidden");
+  if ($("price-group")) $("price-group").style.display = "none";
 }
 
 function saveDraft() {
@@ -1067,17 +1204,17 @@ function loadDraft() {
       if (accessInput) accessInput.checked = true;
     }
 
-    if (draft.isSecret) {
+    if (draft.isSecret && $("secret-options")) {
       $("secret-options").classList.remove("hidden");
     }
 
-    if (draft.accessType === "paid") {
+    if (draft.accessType === "paid" && $("price-group")) {
       $("price-group").style.display = "block";
     }
 
     updateCharCount("video-title", 200);
     updateCharCount("video-description", 500);
-    updateCharCount("secret-preview", 300);
+    if ($("secret-preview")) updateCharCount("secret-preview", 300);
 
     showMessage("upload-message", "Draft loaded", "info");
   } catch (error) {
@@ -1212,4 +1349,6 @@ window.debugFunctions = {
   currentUser: () => currentUser,
   isUploading: () => isUploading,
   clearFilters,
+  showRequestModal,
+  handleSecretRequest,
 };
