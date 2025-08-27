@@ -5,43 +5,39 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Profile — SecretShare</title>
 
-  <!-- main site styles -->
+  <!-- ­­­­--- your global stylesheet -->
   <link rel="stylesheet" href="styles.css">
 
-  <!-- IG-style extras (copy into styles.css if preferred) -->
+  <!-- ­­­­--- extra IG-style rules (move to styles.css if you wish) -->
   <style>
-  /* ——— PROFILE HEADER ——— */
+  /* profile header */
   .profile-card{display:flex;gap:32px;align-items:center;flex-wrap:wrap}
-  .profile-avatar .user-avatar.large{font-size:46px;width:116px;height:116px}
-  .profile-info h2{font:600 20px/1.3 'Inter',sans-serif;margin-bottom:6px}
+  .profile-avatar .user-avatar.large{width:116px;height:116px;font-size:46px}
+  .profile-info h2{font:600 20px/1.3 'Inter',sans-serif;margin:.15em 0}
   .profile-stats{display:flex;gap:24px;margin-top:8px}
-  .profile-stats .stat{text-align:center}
-  .profile-stats .stat-number{font:600 18px}
+  .profile-stats .stat{text-align:center}.stat-number{font:600 18px}
 
-  /* ——— NAV TABS ——— */
+  /* tab bar */
   .profile-nav{margin:34px 0 14px;display:flex;gap:12px}
-  .tab-btn{
-    flex:1;padding:8px 0;border:none;cursor:pointer;
-    font:600 14px/1 'Inter',sans-serif;letter-spacing:.4px;
-    background:#f5f5f5;border-radius:6px;transition:background .2s}
-  .tab-btn.active,.tab-btn:hover{background:#e0e0e0}
+  .tab-btn{flex:1;padding:9px 0;border:none;cursor:pointer;
+           background:#f4f4f4;border-radius:6px;
+           font:600 14px/1 'Inter',sans-serif}
+  .tab-btn.active,.tab-btn:hover{background:#e1e1e1}
 
-  /* ——— POSTS GRID (3-col responsive) ——— */
-  .posts-grid{display:grid;gap:6px;
-    grid-template-columns:repeat(auto-fill,minmax(122px,1fr))}
+  /* grid */
+  .posts-grid{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(122px,1fr))}
   .post-thumb{position:relative;overflow:hidden;aspect-ratio:1/1}
-  .post-thumb img,.post-thumb video{width:100%;height:100%;object-fit:cover;
-    transition:transform .25s}
-  .post-thumb:hover img{transform:scale(1.05)}
+  .post-thumb img,.post-thumb video{width:100%;height:100%;object-fit:cover;transition:transform .25s}
+  .post-thumb:hover img,.post-thumb:hover video{transform:scale(1.05)}
 
-  /* ——— PANEL VISIBILITY ——— */
-  .tab-panel.hidden{display:none}
+  /* show / hide */
+  .hidden{display:none}
   </style>
 </head>
 
 <body class="dashboard-body">
   <div class="dashboard-container">
-    <!-- Navigation --------------------------------------------------->
+    <!-- Navigation -->
     <nav class="dashboard-nav">
       <div class="nav-brand"><h3>🔒 SecretShare</h3></div>
 
@@ -54,17 +50,18 @@
       <button class="btn secondary logout-btn" id="logout">Sign out</button>
     </nav>
 
-    <!-- Main ---------------------------------------------------------->
+    <!-- Main content -->
     <main class="dashboard-main">
       <div class="profile-container">
-        <!-- header -------------------------------------------------->
-        <div class="page-header">
-          <h1>Your profile</h1>
-          <p class="page-subtitle">Manage your account, see your posts</p>
-        </div>
 
-        <!-- overview card ----------------------------------------->
-        <div class="profile-overview">
+        <!-- title -->
+        <header class="page-header">
+          <h1>Your profile</h1>
+          <p class="page-subtitle">Manage your account &amp; see your posts</p>
+        </header>
+
+        <!-- overview card -->
+        <section class="profile-overview">
           <div class="profile-card">
             <div class="profile-avatar">
               <div class="user-avatar large" id="profile-avatar">👤</div>
@@ -79,31 +76,109 @@
                 <div class="stat"><span class="stat-number" id="videos-count">0</span><span class="stat-label">Videos</span></div>
                 <div class="stat"><span class="stat-number" id="followers-count">0</span><span class="stat-label">Followers</span></div>
                 <div class="stat"><span class="stat-number" id="following-count">0</span><span class="stat-label">Following</span></div>
-                <div class="stat"><span class="stat-number" id="total-views">0</span><span class="stat-label">Total views</span></div>
+                <div class="stat"><span class="stat-number" id="total-views">0</span><span class="stat-label">Views</span></div>
               </div>
             </div>
           </div>
-        </div>
-
-        <!-- IG-style nav tabs ------------------------------------->
-        <div class="profile-nav">
-          <button class="tab-btn active" data-tab="posts">POSTS</button>
-          <button class="tab-btn"        data-tab="edit">EDIT PROFILE</button>
-        </div>
-
-        <!-- POSTS GRID (default visible) -------------------------->
-        <section id="posts-section" class="tab-panel">
-          <div id="posts-grid" class="posts-grid">
-            <!-- thumbnails injected by JS -->
-          </div>
         </section>
 
-        <!-- SETTINGS (hidden until tab click) --------------------->
-        <section id="edit-section" class="tab-panel hidden">
+        <!-- tab bar -->
+        <nav class="profile-nav">
+          <button class="tab-btn active" data-tab="posts">POSTS</button>
+          <button class="tab-btn"        data-tab="edit">EDIT PROFILE</button>
+        </nav>
+
+        <!-- POSTS GRID -->
+        <section id="posts" class="tab-panel">
+          <div id="posts-grid" class="posts-grid"><!-- thumbnails injected by JS --></div>
+        </section>
+
+        <!-- EDIT PROFILE -->
+        <section id="edit" class="tab-panel hidden">
           <div class="settings-container">
-            <!-- ◄--- everything you already had (basic info, security, privacy) –--► -->
-            … (keep your entire existing settings markup here; omitted for brevity) …
-          </div>
+
+            <!-- BASIC INFO ------------------------------------------------------->
+            <div class="settings-section">
+              <h3>Basic Information</h3>
+              <form id="update-profile-form">
+                <div class="form-group">
+                  <label for="update-username">Username</label>
+                  <input id="update-username" type="text" placeholder="Enter username"
+                         required minlength="3" maxlength="30" pattern="[a-zA-Z0-9_]+">
+                  <small class="form-help">3-30 chars, letters/numbers/underscores.</small>
+                </div>
+
+                <div class="form-group">
+                  <label for="update-fullname">Full name</label>
+                  <input id="update-fullname" type="text" maxlength="100" placeholder="Your name">
+                </div>
+
+                <div class="form-group">
+                  <label for="update-bio">Bio</label>
+                  <textarea id="update-bio" rows="3" maxlength="500" placeholder="Tell us about yourself…"></textarea>
+                  <small class="char-count" id="bio-char-count">0/500</small>
+                </div>
+
+                <div class="form-group">
+                  <label for="update-instagram">Instagram handle</label>
+                  <input id="update-instagram" type="text" maxlength="50" placeholder="@yourusername">
+                </div>
+
+                <div class="form-group">
+                  <label for="update-website">Website</label>
+                  <input id="update-website" type="url" placeholder="https://example.com">
+                </div>
+
+                <div class="form-actions"><button type="submit" class="btn primary">Update profile</button></div>
+              </form>
+            </div>
+
+            <!-- SECURITY --------------------------------------------------------->
+            <div class="settings-section">
+              <h3>Account security</h3>
+              <form id="change-password-form">
+                <div class="form-group">
+                  <label for="current-password">Current password</label>
+                  <input id="current-password" type="password" required minlength="6">
+                </div>
+
+                <div class="form-group">
+                  <label for="new-password">New password</label>
+                  <input id="new-password" type="password" required minlength="6">
+                </div>
+
+                <div class="form-group">
+                  <label for="confirm-password">Confirm new password</label>
+                  <input id="confirm-password" type="password" required minlength="6">
+                </div>
+
+                <div class="form-actions"><button type="submit" class="btn secondary">Change password</button></div>
+              </form>
+            </div>
+
+            <!-- PRIVACY ---------------------------------------------------------->
+            <div class="settings-section">
+              <h3>Privacy settings</h3>
+              <div class="settings-options">
+                <label class="setting-label">
+                  <input type="checkbox" id="profile-public" checked>
+                  <span class="setting-text"><strong>Public profile</strong>
+                    <small>Allow others to find and view you</small></span>
+                </label>
+
+                <label class="setting-label">
+                  <input type="checkbox" id="allow-requests" checked>
+                  <span class="setting-text"><strong>Allow secret requests</strong>
+                    <small>Let users request access to your content</small></span>
+                </label>
+              </div>
+
+              <div class="form-actions">
+                <button type="button" class="btn secondary" id="save-privacy-settings">Save settings</button>
+              </div>
+            </div>
+
+          </div><!-- /.settings-container -->
         </section>
 
         <!-- messages -->
@@ -112,48 +187,49 @@
     </main>
   </div>
 
-  <!-- Scripts -------------------------------------------------------->
+  <!-- ­­­­--- scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
   <script src="config.js"></script>
   <script src="dashboard.js"></script>
 
-  <!-- IG-style behaviour (add to dashboard.js if you prefer) -->
+  <!-- local behaviour for tabs + grid -->
   <script>
-  // ─── TAB SWITCHING ───────────────────────────────────────
+  // switch tabs
   document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.addEventListener('click',e=>{
+    btn.onclick = () =>{
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
-
-      const tab = btn.dataset.tab;          // 'posts' | 'edit'
-      document.getElementById('posts-section').classList.toggle('hidden', tab!=='posts');
-      document.getElementById('edit-section' ).classList.toggle('hidden', tab!=='edit');
-      if(tab==='posts') loadMyPosts();      // refresh grid each time
-    });
+      const tab = btn.dataset.tab;            // "posts" | "edit"
+      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden', p.id!==tab));
+      if(tab==='posts') loadMyPosts();
+    };
   });
 
-  // ─── LOAD USER POSTS INTO GRID ──────────────────────────
+  // load user’s videos
   async function loadMyPosts(){
     const grid = document.getElementById('posts-grid');
-    if(!grid || !window.sb || !window.currentUser) return;
+    if(!grid || !window.currentUser) return;
 
     const { data: vids, error } = await sb
           .from('videos')
-          .select('id,thumbnail_url')
+          .select('id,thumbnail_url,video_url')
           .eq('user_id', currentUser.id)
           .order('created_at',{ascending:false});
 
     if(error){ console.error(error); return; }
 
-    grid.innerHTML = vids.map(v=>`
-      <a href="video.html?id=${v.id}" class="post-thumb">
-        <img src="${v.thumbnail_url ?? 'fallback.jpg'}" alt="">
-      </a>
-    `).join('');
+    grid.innerHTML = vids.map(v=>{
+      const thumb = v.thumbnail_url ?? `${v.video_url}#t=2`;
+      return `<a class="post-thumb" href="watch.html?id=${v.id}">
+                ${v.thumbnail_url
+                  ? `<img src="${thumb}" alt="video ${v.id}">`
+                  : `<video muted preload="metadata" src="${v.video_url}"></video>`}
+              </a>`;
+    }).join('');
   }
 
-  // load grid on first visit
-  document.addEventListener('DOMContentLoaded', loadMyPosts);
+  // first load after auth happens ─ give dashboard.js time to set currentUser
+  document.addEventListener('DOMContentLoaded', ()=>setTimeout(loadMyPosts,500));
   </script>
 </body>
 </html>
