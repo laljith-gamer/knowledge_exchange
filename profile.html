@@ -29,6 +29,12 @@
   .post-thumb{position:relative;overflow:hidden;aspect-ratio:1/1}
   .post-thumb img,.post-thumb video{width:100%;height:100%;object-fit:cover;transition:transform .25s}
   .post-thumb:hover img,.post-thumb:hover video{transform:scale(1.05)}
+  .post-thumb {position:relative}
+.post-thumb .owner{
+  position:absolute;bottom:4px;left:4px;
+  background:rgba(0,0,0,.6);color:#fff;
+  font-size:11px;padding:2px 4px;border-radius:3px}
+
 
   /* show / hide */
   .hidden{display:none}
@@ -206,27 +212,28 @@
   });
 
   // load user’s videos
-  async function loadMyPosts(){
-    const grid = document.getElementById('posts-grid');
-    if(!grid || !window.currentUser) return;
+  async function loadMyPosts() {
+  const grid = document.getElementById('posts-grid');
+  if (!grid) return;
 
-    const { data: vids, error } = await sb
-          .from('videos')
-          .select('id,thumbnail_url,video_url')
-          .eq('user_id', currentUser.id)
-          .order('created_at',{ascending:false});
+  const { data: vids, error } = await sb
+    .from('videos_with_user')      // use the view
+    .select('id, title, video_url, thumbnail_url, username, avatar_url')
+    .eq('user_id', currentUser.id) // just your own videos
+    .order('created_at', { ascending: false });
 
-    if(error){ console.error(error); return; }
+  if (error) { console.error(error); return; }
 
-    grid.innerHTML = vids.map(v=>{
-      const thumb = v.thumbnail_url ?? `${v.video_url}#t=2`;
-      return `<a class="post-thumb" href="watch.html?id=${v.id}">
-                ${v.thumbnail_url
-                  ? `<img src="${thumb}" alt="video ${v.id}">`
-                  : `<video muted preload="metadata" src="${v.video_url}"></video>`}
-              </a>`;
-    }).join('');
-  }
+  grid.innerHTML = vids.map(v => {
+    const thumb = v.thumbnail_url ?? `${v.video_url}#t=2`;
+    return `
+      <a class="post-thumb" href="watch.html?id=${v.id}" title="${v.title}">
+        <img src="${thumb}" alt="${v.title}">
+        <span class="owner">@${v.username}</span>
+      </a>`;
+  }).join('');
+}
+
 
   // first load after auth happens ─ give dashboard.js time to set currentUser
   document.addEventListener('DOMContentLoaded', ()=>setTimeout(loadMyPosts,500));
