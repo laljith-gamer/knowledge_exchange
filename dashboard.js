@@ -9,6 +9,7 @@ let isUploading = false;
 let currentFilter = "all";
 let currentCategory = "";
 let currentVideoIdForComments = null;
+let notificationSubscription = null;
 
 /* ---------- HELPER FUNCTIONS ---------- */
 const $ = (id) => document.getElementById(id);
@@ -58,8 +59,7 @@ const updateCharCount = (inputId, maxLength) => {
   if (counter) {
     const currentLength = input.value.length;
     counter.textContent = `${currentLength}/${maxLength}`;
-    counter.style.color =
-      currentLength > maxLength ? "var(--danger-color)" : "var(--muted-text)";
+    counter.style.color = currentLength > maxLength ? "var(--danger-color)" : "var(--muted-text)";
   }
 };
 
@@ -75,13 +75,10 @@ const showLoadingOverlay = (show, message = "Processing...") => {
 
 /* ---------- INITIALIZATION ---------- */
 document.addEventListener("DOMContentLoaded", async () => {
-  console.log("DOM Content Loaded - Starting initialization...");
-
+  console.log("Dashboard initializing...");
+  
   try {
-    const {
-      data: { session },
-      error,
-    } = await sb.auth.getSession();
+    const { data: { session }, error } = await sb.auth.getSession();
 
     if (error) {
       console.error("Session error:", error);
@@ -90,6 +87,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     }
 
     if (!session?.user) {
+      console.log("No session found, redirecting to login");
       window.location.href = "index.html";
       return;
     }
@@ -108,14 +106,12 @@ document.addEventListener("DOMContentLoaded", async () => {
       const pathname = window.location.pathname;
       console.log("Current pathname:", pathname);
 
-      if (
-        pathname.includes("home.html") ||
-        pathname === "/" ||
-        pathname.endsWith("/")
-      ) {
+      if (pathname.includes("home.html") || pathname === "/" || pathname.endsWith("/")) {
         console.log("Loading home content...");
         loadVideoFeed();
         loadNotifications();
+        updateNotificationBadge();
+        setupNotificationSubscription();
       }
 
       if (pathname.includes("createone.html")) {
@@ -148,8 +144,7 @@ async function loadUserProfile(user) {
       return;
     }
 
-    const username =
-      profile?.username || user.user_metadata?.username || "User";
+    const username = profile?.username || user.user_metadata?.username || "User";
     const fullName = profile?.full_name || user.user_metadata?.full_name || "";
 
     // Update UI elements
@@ -160,15 +155,11 @@ async function loadUserProfile(user) {
 
     if (profileName) profileName.textContent = username;
     if (profileEmail) profileEmail.textContent = user.email;
-    if (profileDate)
-      profileDate.textContent = new Date(user.created_at).toLocaleDateString();
+    if (profileDate) profileDate.textContent = new Date(user.created_at).toLocaleDateString();
     if (modalUsername) modalUsername.textContent = username;
 
     // Update avatars
-    document
-      .querySelectorAll(
-        ".user-avatar, #modal-avatar, #comment-user-avatar, #profile-avatar"
-      )
+    document.querySelectorAll(".user-avatar, #modal-avatar, #comment-user-avatar, #profile-avatar")
       .forEach((avatar) => {
         if (avatar) {
           avatar.textContent = username.charAt(0).toUpperCase();
@@ -191,48 +182,31 @@ async function loadUserProfileData() {
 
     if (profile) {
       // Update form fields
-      if ($("update-username"))
-        $("update-username").value = profile.username || "";
-      if ($("update-fullname"))
-        $("update-fullname").value = profile.full_name || "";
+      if ($("update-username")) $("update-username").value = profile.username || "";
+      if ($("update-fullname")) $("update-fullname").value = profile.full_name || "";
       if ($("update-bio")) $("update-bio").value = profile.bio || "";
-      if ($("update-instagram"))
-        $("update-instagram").value = profile.instagram_handle || "";
-      if ($("update-website"))
-        $("update-website").value = profile.website_url || "";
+      if ($("update-instagram")) $("update-instagram").value = profile.instagram_handle || "";
+      if ($("update-website")) $("update-website").value = profile.website_url || "";
 
       // Update display elements
-      if ($("profile-display-name"))
-        $("profile-display-name").textContent =
-          profile.username || "Unknown User";
-      if ($("profile-display-email"))
-        $("profile-display-email").textContent = currentUser.email;
+      if ($("profile-display-name")) $("profile-display-name").textContent = profile.username || "Unknown User";
+      if ($("profile-display-email")) $("profile-display-email").textContent = currentUser.email;
 
       // Update stats
-      if ($("videos-count"))
-        $("videos-count").textContent = profile.videos_count || 0;
-      if ($("followers-count"))
-        $("followers-count").textContent = profile.followers_count || 0;
-      if ($("following-count"))
-        $("following-count").textContent = profile.following_count || 0;
-      if ($("total-views"))
-        $("total-views").textContent = profile.total_views || 0;
+      if ($("videos-count")) $("videos-count").textContent = profile.videos_count || 0;
+      if ($("followers-count")) $("followers-count").textContent = profile.followers_count || 0;
+      if ($("following-count")) $("following-count").textContent = profile.following_count || 0;
+      if ($("total-views")) $("total-views").textContent = profile.total_views || 0;
 
       // Update privacy settings
-      if ($("profile-public"))
-        $("profile-public").checked = profile.is_public !== false;
-      if ($("allow-requests"))
-        $("allow-requests").checked = profile.allow_requests !== false;
+      if ($("profile-public")) $("profile-public").checked = profile.is_public !== false;
+      if ($("allow-requests")) $("allow-requests").checked = profile.allow_requests !== false;
 
       // Update avatar
-      const avatars = document.querySelectorAll(
-        "#profile-avatar, #modal-avatar, #comment-user-avatar"
-      );
+      const avatars = document.querySelectorAll("#profile-avatar, #modal-avatar, #comment-user-avatar");
       avatars.forEach((avatar) => {
         if (avatar) {
-          avatar.textContent = (profile.username || "U")
-            .charAt(0)
-            .toUpperCase();
+          avatar.textContent = (profile.username || "U").charAt(0).toUpperCase();
         }
       });
 
@@ -241,6 +215,249 @@ async function loadUserProfileData() {
   } catch (error) {
     console.error("Error loading profile data:", error);
     showMessage("profile-message", "Error loading profile data", "error");
+  }
+}
+
+/* ---------- NOTIFICATIONS SYSTEM ---------- */
+async function loadNotifications() {
+  if (!currentUser) {
+    console.log("No current user for notifications");
+    return;
+  }
+
+  console.log("Loading notifications for user:", currentUser.id);
+  const notificationsList = $("notifications-list");
+  
+  if (!notificationsList) {
+    console.log("Notifications list element not found");
+    return;
+  }
+
+  // Show loading state
+  notificationsList.innerHTML = `
+    <div class="loading-container">
+      <div class="loading-spinner small"></div>
+      <p>Loading notifications...</p>
+    </div>
+  `;
+
+  try {
+    const { data: notifications, error } = await sb
+      .from("notifications")
+      .select(`
+        *,
+        actor:actor_id(username, full_name)
+      `)
+      .eq("user_id", currentUser.id)
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) {
+      console.error("Error loading notifications:", error);
+      notificationsList.innerHTML = `
+        <div class="error-requests">
+          <p>Failed to load notifications</p>
+          <button onclick="loadNotifications()" class="btn small">Retry</button>
+        </div>
+      `;
+      return;
+    }
+
+    console.log("Notifications loaded:", notifications);
+
+    if (!notifications || notifications.length === 0) {
+      notificationsList.innerHTML = `
+        <div class="no-requests">
+          <p>No notifications yet</p>
+          <small>You'll be notified when someone interacts with your content</small>
+        </div>
+      `;
+      return;
+    }
+
+    // Render notifications
+    notificationsList.innerHTML = notifications.map(notification => `
+      <div class="notification-item ${notification.is_read ? 'read' : 'unread'}" data-id="${notification.id}">
+        <div class="notification-header">
+          <div class="user-avatar small">${notification.actor?.username?.charAt(0).toUpperCase() || 'U'}</div>
+          <div class="notification-content">
+            <h4>${notification.title}</h4>
+            <p>${notification.message}</p>
+            <span class="notification-time">${getTimeAgo(new Date(notification.created_at))}</span>
+          </div>
+        </div>
+        ${!notification.is_read ? '<div class="unread-dot"></div>' : ''}
+      </div>
+    `).join('');
+
+    // Add click handlers to mark as read
+    notificationsList.querySelectorAll('.notification-item:not(.read)').forEach(item => {
+      item.addEventListener('click', () => markNotificationAsRead(item.dataset.id));
+    });
+
+  } catch (error) {
+    console.error("Exception loading notifications:", error);
+    notificationsList.innerHTML = `
+      <div class="error-requests">
+        <p>Error loading notifications</p>
+        <button onclick="loadNotifications()" class="btn small">Retry</button>
+      </div>
+    `;
+  }
+}
+
+async function updateNotificationBadge() {
+  if (!currentUser) return;
+  
+  try {
+    const { count, error } = await sb
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", currentUser.id)
+      .eq("is_read", false);
+
+    if (error) {
+      console.error("Error fetching unread count:", error);
+      return;
+    }
+
+    console.log("Unread notifications count:", count);
+
+    const badge = $("notification-badge");
+    if (badge) {
+      if (count > 0) {
+        badge.textContent = count > 99 ? "99+" : count;
+        badge.style.display = "flex";
+      } else {
+        badge.style.display = "none";
+      }
+    }
+
+    // Update notifications button
+    const notifBtn = $("notifications-btn");
+    if (notifBtn) {
+      notifBtn.classList.toggle("has-notifications", count > 0);
+    }
+
+  } catch (error) {
+    console.error("Exception updating notification badge:", error);
+  }
+}
+
+function setupNotificationSubscription() {
+  if (!currentUser) {
+    console.log("No current user for notification subscription");
+    return;
+  }
+
+  console.log("Setting up notification subscription for user:", currentUser.id);
+
+  // Remove existing subscription
+  if (notificationSubscription) {
+    console.log("Removing existing subscription");
+    sb.removeChannel(notificationSubscription);
+  }
+
+  notificationSubscription = sb
+    .channel('notifications')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'notifications',
+        filter: `user_id=eq.${currentUser.id}`
+      },
+      (payload) => {
+        console.log('Notification realtime update:', payload);
+        
+        // Reload notifications and update badge
+        loadNotifications();
+        updateNotificationBadge();
+        
+        // Show a toast notification for new notifications
+        if (payload.eventType === 'INSERT') {
+          showNotificationToast(payload.new);
+        }
+      }
+    )
+    .subscribe((status) => {
+      console.log('Notification subscription status:', status);
+      if (status === 'SUBSCRIBED') {
+        console.log('✅ Successfully subscribed to notifications');
+      } else if (status === 'CHANNEL_ERROR') {
+        console.error('❌ Failed to subscribe to notifications');
+      }
+    });
+}
+
+function showNotificationToast(notification) {
+  // Create a toast notification
+  const toast = document.createElement('div');
+  toast.className = 'notification-toast';
+  toast.innerHTML = `
+    <div class="toast-content">
+      <h4>${notification.title}</h4>
+      <p>${notification.message}</p>
+    </div>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  // Show toast
+  setTimeout(() => toast.classList.add('show'), 100);
+  
+  // Hide toast after 5 seconds
+  setTimeout(() => {
+    toast.classList.remove('show');
+    setTimeout(() => document.body.removeChild(toast), 300);
+  }, 5000);
+}
+
+async function markNotificationAsRead(notificationId) {
+  try {
+    const { error } = await sb
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("id", notificationId)
+      .eq("user_id", currentUser.id);
+
+    if (error) {
+      console.error("Error marking notification as read:", error);
+      return;
+    }
+
+    // Update UI
+    const notificationItem = document.querySelector(`[data-id="${notificationId}"]`);
+    if (notificationItem) {
+      notificationItem.classList.add('read');
+      const unreadDot = notificationItem.querySelector('.unread-dot');
+      if (unreadDot) {
+        unreadDot.remove();
+      }
+    }
+
+    // Update badge
+    updateNotificationBadge();
+
+  } catch (error) {
+    console.error("Exception marking notification as read:", error);
+  }
+}
+
+function toggleNotifications() {
+  console.log("Toggling notifications panel");
+  const panel = $("notifications-panel");
+  if (!panel) {
+    console.log("Notifications panel not found");
+    return;
+  }
+
+  if (panel.classList.contains("hidden")) {
+    panel.classList.remove("hidden");
+    loadNotifications(); // Reload notifications when opening
+  } else {
+    panel.classList.add("hidden");
   }
 }
 
@@ -255,6 +472,22 @@ function bindDashboardEvents() {
     console.log("✓ Logout button bound");
   }
 
+  // Notifications button
+  const notificationsBtn = $("notifications-btn");
+  if (notificationsBtn) {
+    notificationsBtn.onclick = toggleNotifications;
+    console.log("✓ Notifications button bound");
+  }
+
+  // Close notifications panel
+  const closeNotifications = document.querySelector(".notifications-panel .close-panel");
+  if (closeNotifications) {
+    closeNotifications.onclick = () => {
+      const panel = $("notifications-panel");
+      if (panel) panel.classList.add("hidden");
+    };
+  }
+
   // Filter tabs - FIXED WITH PROPER EVENT BINDING
   const filterTabs = document.querySelectorAll(".filter-tab");
   console.log(`Found ${filterTabs.length} filter tabs`);
@@ -262,7 +495,6 @@ function bindDashboardEvents() {
   filterTabs.forEach((tab, index) => {
     if (tab) {
       console.log(`Binding filter tab ${index}:`, tab.dataset.filter);
-
       // Remove any existing listeners
       tab.replaceWith(tab.cloneNode(true));
       const newTab = document.querySelectorAll(".filter-tab")[index];
@@ -270,17 +502,11 @@ function bindDashboardEvents() {
       newTab.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-
         console.log("Filter tab clicked:", e.target.dataset.filter);
-
         // Remove active class from all tabs
-        document
-          .querySelectorAll(".filter-tab")
-          .forEach((t) => t.classList.remove("active"));
-
+        document.querySelectorAll(".filter-tab").forEach((t) => t.classList.remove("active"));
         // Add active class to clicked tab
         e.target.classList.add("active");
-
         // Update filter
         currentFilter = e.target.dataset.filter;
         videosLoaded = 0;
@@ -308,7 +534,6 @@ function bindDashboardEvents() {
   storyItems.forEach((item, index) => {
     if (item) {
       console.log(`Binding story item ${index}:`, item.dataset.category);
-
       // Remove any existing listeners
       item.replaceWith(item.cloneNode(true));
       const newItem = document.querySelectorAll(".story-item")[index];
@@ -316,12 +541,9 @@ function bindDashboardEvents() {
       newItem.addEventListener("click", (e) => {
         e.preventDefault();
         e.stopPropagation();
-
         console.log("Story item clicked:", e.currentTarget.dataset.category);
-
         const category = e.currentTarget.dataset.category;
         currentCategory = category;
-
         if (categoryFilter) categoryFilter.value = category;
         videosLoaded = 0;
         loadVideoFeed();
@@ -334,13 +556,6 @@ function bindDashboardEvents() {
   if (loadMoreBtn) {
     loadMoreBtn.onclick = loadMoreVideos;
     console.log("✓ Load more button bound");
-  }
-
-  // Notifications
-  const notificationsBtn = $("notifications-btn");
-  if (notificationsBtn) {
-    notificationsBtn.onclick = toggleNotifications;
-    console.log("✓ Notifications button bound");
   }
 
   // Modal events
@@ -356,8 +571,7 @@ function bindDashboardEvents() {
     };
   });
 
-  if (cancelRequest)
-    cancelRequest.onclick = () => requestModal?.classList.add("hidden");
+  if (cancelRequest) cancelRequest.onclick = () => requestModal?.classList.add("hidden");
   if (requestForm) requestForm.onsubmit = handleSecretRequest;
 
   // Comment functionality
@@ -392,28 +606,25 @@ function bindDashboardEvents() {
     if (e.target.classList.contains("modal")) {
       e.target.classList.add("hidden");
     }
+    
+    // Close notifications panel when clicking outside
+    if (!e.target.closest('.notifications-panel') && !e.target.closest('#notifications-btn')) {
+      const panel = $("notifications-panel");
+      if (panel && !panel.classList.contains("hidden")) {
+        panel.classList.add("hidden");
+      }
+    }
   });
 
   // **CRITICAL FIX: Event delegation for dynamically created buttons**
   document.addEventListener("click", function (e) {
     // Handle request access buttons
-    if (
-      e.target.classList.contains("double-tap-btn") ||
-      e.target.closest(".double-tap-btn")
-    ) {
+    if (e.target.classList.contains("double-tap-btn") || e.target.closest(".double-tap-btn")) {
       e.preventDefault();
       e.stopPropagation();
-
-      const btn = e.target.classList.contains("double-tap-btn")
-        ? e.target
-        : e.target.closest(".double-tap-btn");
+      const btn = e.target.classList.contains("double-tap-btn") ? e.target : e.target.closest(".double-tap-btn");
       const videoId = btn.dataset.videoId;
-
-      console.log(
-        "Request access button clicked via delegation! Video ID:",
-        videoId
-      );
-
+      console.log("Request access button clicked via delegation! Video ID:", videoId);
       if (videoId) {
         showRequestModal(videoId);
       } else {
@@ -423,64 +634,38 @@ function bindDashboardEvents() {
     }
 
     // Handle like buttons
-    if (
-      e.target.classList.contains("like-btn") ||
-      e.target.closest(".like-btn")
-    ) {
+    if (e.target.classList.contains("like-btn") || e.target.closest(".like-btn")) {
       e.preventDefault();
       e.stopPropagation();
-
-      const btn = e.target.classList.contains("like-btn")
-        ? e.target
-        : e.target.closest(".like-btn");
+      const btn = e.target.classList.contains("like-btn") ? e.target : e.target.closest(".like-btn");
       const videoId = btn.dataset.videoId;
-
       if (videoId) {
         toggleLike(videoId, btn);
       }
     }
 
     // Handle comment buttons
-    if (
-      e.target.classList.contains("comment-btn") ||
-      e.target.closest(".comment-btn")
-    ) {
+    if (e.target.classList.contains("comment-btn") || e.target.closest(".comment-btn")) {
       e.preventDefault();
       e.stopPropagation();
-
-      const btn = e.target.classList.contains("comment-btn")
-        ? e.target
-        : e.target.closest(".comment-btn");
+      const btn = e.target.classList.contains("comment-btn") ? e.target : e.target.closest(".comment-btn");
       const videoId = btn.dataset.videoId;
-
       if (videoId) {
         showCommentsModal(videoId);
       }
     }
 
     // Handle share buttons
-    if (
-      e.target.classList.contains("share-btn") ||
-      e.target.closest(".share-btn")
-    ) {
+    if (e.target.classList.contains("share-btn") || e.target.closest(".share-btn")) {
       e.preventDefault();
       e.stopPropagation();
-
-      const btn = e.target.classList.contains("share-btn")
-        ? e.target
-        : e.target.closest(".share-btn");
+      const btn = e.target.classList.contains("share-btn") ? e.target : e.target.closest(".share-btn");
       const videoId = btn.dataset.videoId;
-
       if (videoId) {
-        // Find the video data (you might need to store this differently)
         const postCard = btn.closest(".post-card");
         if (postCard) {
-          const videoTitle =
-            postCard.querySelector(".video-title")?.textContent ||
-            "Check out this video";
-          const videoDescription =
-            postCard.querySelector(".video-description")?.textContent || "";
-
+          const videoTitle = postCard.querySelector(".video-title")?.textContent || "Check out this video";
+          const videoDescription = postCard.querySelector(".video-description")?.textContent || "";
           shareVideo({
             id: videoId,
             title: videoTitle,
@@ -495,19 +680,33 @@ function bindDashboardEvents() {
   console.log("=== EVENT BINDING COMPLETE ===");
 }
 
+/* ---------- LOGOUT FUNCTION ---------- */
+async function logout() {
+  try {
+    // Remove notification subscription
+    if (notificationSubscription) {
+      sb.removeChannel(notificationSubscription);
+      notificationSubscription = null;
+    }
+
+    const { error } = await sb.auth.signOut();
+    if (error) {
+      console.error("Logout error:", error);
+    }
+    
+    localStorage.removeItem("videoDraft");
+    window.location.href = "index.html";
+  } catch (error) {
+    console.error("Logout exception:", error);
+    window.location.href = "index.html";
+  }
+}
+
 // GLOBAL FUNCTIONS FOR MANUAL TESTING
 window.changeFilter = function (filter, element) {
   console.log("Manual filter change:", filter);
-
-  // Remove active from all tabs
-  document
-    .querySelectorAll(".filter-tab")
-    .forEach((tab) => tab.classList.remove("active"));
-
-  // Add active to clicked tab
+  document.querySelectorAll(".filter-tab").forEach((tab) => tab.classList.remove("active"));
   if (element) element.classList.add("active");
-
-  // Update global state
   currentFilter = filter;
   videosLoaded = 0;
   loadVideoFeed();
@@ -515,11 +714,9 @@ window.changeFilter = function (filter, element) {
 
 window.changeCategory = function (category) {
   console.log("Manual category change:", category);
-
   currentCategory = category;
   const categoryFilter = $("category-filter");
   if (categoryFilter) categoryFilter.value = category;
-
   videosLoaded = 0;
   loadVideoFeed();
 };
@@ -527,7 +724,6 @@ window.changeCategory = function (category) {
 function initializeUploadForm() {
   const videoFile = $("video-file");
   if (videoFile) {
-    // Remove any existing event listeners to prevent duplicates
     videoFile.removeEventListener("change", handleVideoSelect);
     videoFile.addEventListener("change", handleVideoSelect);
     console.log("✓ Video file input bound successfully");
@@ -545,26 +741,15 @@ function initializeUploadForm() {
   const descInput = $("video-description");
   const previewInput = $("secret-preview");
 
-  if (titleInput)
-    titleInput.addEventListener("input", () =>
-      updateCharCount("video-title", 200)
-    );
-  if (descInput)
-    descInput.addEventListener("input", () =>
-      updateCharCount("video-description", 500)
-    );
-  if (previewInput)
-    previewInput.addEventListener("input", () =>
-      updateCharCount("secret-preview", 300)
-    );
+  if (titleInput) titleInput.addEventListener("input", () => updateCharCount("video-title", 200));
+  if (descInput) descInput.addEventListener("input", () => updateCharCount("video-description", 500));
+  if (previewInput) previewInput.addEventListener("input", () => updateCharCount("secret-preview", 300));
 
   // Secret options toggle
   const isSecretCheckbox = $("is-secret");
   const secretOptions = $("secret-options");
   const priceGroup = $("price-group");
-  const accessTypeInputs = document.querySelectorAll(
-    'input[name="access-type"]'
-  );
+  const accessTypeInputs = document.querySelectorAll('input[name="access-type"]');
 
   if (isSecretCheckbox && secretOptions) {
     isSecretCheckbox.addEventListener("change", (e) => {
@@ -633,8 +818,7 @@ async function loadCreatorRequests() {
       // Fallback direct query
       const { data: fallbackRequests, error: fallbackError } = await sb
         .from("secret_requests")
-        .select(
-          `
+        .select(`
           id,
           reason,
           offer_type,
@@ -644,27 +828,25 @@ async function loadCreatorRequests() {
           video_id,
           videos!inner(title),
           profiles!secret_requests_requester_id_fkey(username)
-        `
-        )
+        `)
         .eq("creator_id", currentUser.id)
         .eq("status", "pending")
         .order("created_at", { ascending: false });
 
       if (fallbackError) throw fallbackError;
 
-      const formattedRequests =
-        fallbackRequests?.map((request) => ({
-          id: request.id,
-          video_title: request.videos?.title || "Unknown Video",
-          requester_username: request.profiles?.username || "Unknown User",
-          requester_email: "N/A",
-          reason: request.reason,
-          offer_type: request.offer_type,
-          offer_details: request.offer_details,
-          status: request.status,
-          created_at: request.created_at,
-          video_id: request.video_id,
-        })) || [];
+      const formattedRequests = fallbackRequests?.map((request) => ({
+        id: request.id,
+        video_title: request.videos?.title || "Unknown Video",
+        requester_username: request.profiles?.username || "Unknown User",
+        requester_email: "N/A",
+        reason: request.reason,
+        offer_type: request.offer_type,
+        offer_details: request.offer_details,
+        status: request.status,
+        created_at: request.created_at,
+        video_id: request.video_id,
+      })) || [];
 
       renderRequestsList(formattedRequests, requestsList, requestsCount);
       return;
@@ -697,9 +879,7 @@ function renderRequestsList(requests, requestsList, requestsCount) {
   }
 
   if (requests && requests.length > 0) {
-    requestsList.innerHTML = requests
-      .map((request) => createRequestHTML(request))
-      .join("");
+    requestsList.innerHTML = requests.map((request) => createRequestHTML(request)).join("");
   } else {
     requestsList.innerHTML = `
       <div class="no-requests">
@@ -720,9 +900,7 @@ function createRequestHTML(request) {
         <div class="user-avatar small">${avatarLetter}</div>
         <div class="request-meta">
           <h4 class="request-username">${request.requester_username}</h4>
-          <p class="request-video">wants to learn: <strong>${
-            request.video_title
-          }</strong></p>
+          <p class="request-video">wants to learn: <strong>${request.video_title}</strong></p>
           <span class="request-time">${timeAgo}</span>
         </div>
       </div>
@@ -735,22 +913,15 @@ function createRequestHTML(request) {
         
         <div class="request-offer">
           <h5>What they're offering:</h5>
-          <p><strong>${
-            request.offer_type.charAt(0).toUpperCase() +
-            request.offer_type.slice(1)
-          }:</strong> ${request.offer_details}</p>
+          <p><strong>${request.offer_type.charAt(0).toUpperCase() + request.offer_type.slice(1)}:</strong> ${request.offer_details}</p>
         </div>
       </div>
       
       <div class="request-actions">
-        <button class="btn primary small" onclick="handleRequestDecision('${
-          request.id
-        }', 'approved')">
+        <button class="btn primary small" onclick="handleRequestDecision('${request.id}', 'approved')">
           ✅ Approve
         </button>
-        <button class="btn secondary small" onclick="handleRequestDecision('${
-          request.id
-        }', 'rejected')">
+        <button class="btn secondary small" onclick="handleRequestDecision('${request.id}', 'rejected')">
           ❌ Decline  
         </button>
       </div>
@@ -761,24 +932,20 @@ function createRequestHTML(request) {
 async function handleRequestDecision(requestId, decision) {
   console.log(`${decision} request:`, requestId);
 
-  const response =
-    decision === "approved"
-      ? prompt("Optional: Add a message for the requester:")
-      : prompt("Optional: Explain why you're declining:");
+  const response = decision === "approved"
+    ? prompt("Optional: Add a message for the requester:")
+    : prompt("Optional: Explain why you're declining:");
 
   try {
     // First try RPC function
     let result;
     try {
-      const { data: rpcResult, error: rpcError } = await sb.rpc(
-        "handle_request_decision",
-        {
-          p_request_id: requestId,
-          p_creator_id: currentUser.id,
-          p_decision: decision,
-          p_response: response || null,
-        }
-      );
+      const { data: rpcResult, error: rpcError } = await sb.rpc("handle_request_decision", {
+        p_request_id: requestId,
+        p_creator_id: currentUser.id,
+        p_decision: decision,
+        p_response: response || null,
+      });
 
       if (rpcError) throw rpcError;
       result = rpcResult;
@@ -823,32 +990,18 @@ async function handleRequestDecision(requestId, decision) {
     }
 
     if (result && result.success !== false) {
-      showMessage(
-        "profile-message",
-        `Request ${decision} successfully! 🎉`,
-        "success"
-      );
-
+      showMessage("profile-message", `Request ${decision} successfully! 🎉`, "success");
       // Reload requests list
       loadCreatorRequests();
-
       // Reload video feed to update counts
       videosLoaded = 0;
       loadVideoFeed();
     } else {
-      showMessage(
-        "profile-message",
-        result?.message || "Failed to process request",
-        "error"
-      );
+      showMessage("profile-message", result?.message || "Failed to process request", "error");
     }
   } catch (error) {
     console.error("Error processing request:", error);
-    showMessage(
-      "profile-message",
-      "Failed to process request. Please try again.",
-      "error"
-    );
+    showMessage("profile-message", "Failed to process request. Please try again.", "error");
   }
 }
 
@@ -859,22 +1012,13 @@ function showRequestsModal() {
     loadCreatorRequests();
   } else {
     console.log("Requests modal not found - add the HTML modal to your page");
-    showMessage(
-      "profile-message",
-      "Requests feature not available - contact developer",
-      "info"
-    );
+    showMessage("profile-message", "Requests feature not available - contact developer", "info");
   }
 }
 
 /* ---------- VIDEO FEED FUNCTIONALITY ---------- */
 async function loadVideoFeed() {
-  console.log(
-    "Loading video feed with filter:",
-    currentFilter,
-    "category:",
-    currentCategory
-  );
+  console.log("Loading video feed with filter:", currentFilter, "category:", currentCategory);
 
   const loading = $("loading");
   const feedPosts = $("feed-posts");
@@ -883,15 +1027,13 @@ async function loadVideoFeed() {
   try {
     if (loading) loading.style.display = "block";
     if (feedPosts && videosLoaded === 0) {
-      feedPosts.innerHTML =
-        '<div id="loading" class="loading-container"><div class="loading-spinner"></div><p>Loading knowledge feed...</p></div>';
+      feedPosts.innerHTML = '<div id="loading" class="loading-container"><div class="loading-spinner"></div><p>Loading knowledge feed...</p></div>';
     }
 
     // Build query based on filters
     let query = sb
       .from("videos")
-      .select(
-        `
+      .select(`
         *,
         profiles:user_id (
           username,
@@ -899,8 +1041,7 @@ async function loadVideoFeed() {
           avatar_url,
           is_verified
         )
-      `
-      )
+      `)
       .eq("is_published", true)
       .order("created_at", { ascending: false })
       .range(videosLoaded, videosLoaded + videosPerPage - 1);
@@ -956,8 +1097,7 @@ async function loadVideoFeed() {
       videosLoaded += videos.length;
 
       if (loadMoreBtn) {
-        loadMoreBtn.style.display =
-          videos.length < videosPerPage ? "none" : "block";
+        loadMoreBtn.style.display = videos.length < videosPerPage ? "none" : "block";
       }
     } else if (videosLoaded === 0 && feedPosts) {
       feedPosts.innerHTML = `
@@ -986,8 +1126,7 @@ async function createVideoCard(video) {
   card.className = "post-card";
 
   const timeAgo = getTimeAgo(new Date(video.created_at));
-  const username =
-    video.profiles?.username || video.profiles?.full_name || "Unknown User";
+  const username = video.profiles?.username || video.profiles?.full_name || "Unknown User";
   const avatarLetter = username.charAt(0).toUpperCase();
 
   // Check if user has access to this video
@@ -1045,9 +1184,7 @@ async function createVideoCard(video) {
         <div class="post-image">
           <div class="content-preview ${video.category}">
             <h3>🔒 ${video.title}</h3>
-            <p class="content-teaser">${
-              description || "This is secret knowledge..."
-            }</p>
+            <p class="content-teaser">${description || "This is secret knowledge..."}</p>
             <div class="blur-overlay">
               <div class="unlock-icon">🔓</div>
               <p>Click button below to request access</p>
@@ -1072,9 +1209,7 @@ async function createVideoCard(video) {
           video.tags && video.tags.length > 0
             ? `
           <div class="post-tags">
-            ${video.tags
-              .map((tag) => `<span class="tag">#${tag}</span>`)
-              .join("")}
+            ${video.tags.map((tag) => `<span class="tag">#${tag}</span>`).join("")}
           </div>
         `
             : ""
@@ -1109,20 +1244,14 @@ async function createVideoCard(video) {
     </div>
     
     <div class="post-stats">
-      <p><strong>${
-        video.requests_count || 0
-      } people</strong> want to learn this ${
-    video.is_secret ? "secret" : "technique"
-  }</p>
+      <p><strong>${video.requests_count || 0} people</strong> want to learn this ${video.is_secret ? "secret" : "technique"}</p>
       <div class="teaching-method">
         ${getAccessTypeBadge(video.access_type)}
       </div>
     </div>
   `;
 
-  console.log(
-    `Created video card for video ${video.id}, is_secret: ${video.is_secret}, hasAccess: ${hasAccess}`
-  );
+  console.log(`Created video card for video ${video.id}, is_secret: ${video.is_secret}, hasAccess: ${hasAccess}`);
 
   return card;
 }
@@ -1165,16 +1294,14 @@ async function loadVideoComments(videoId) {
     if (error) {
       const { data: fallbackComments, error: fallbackError } = await sb
         .from("video_comments")
-        .select(
-          `
+        .select(`
           *,
           profiles:user_id (
             username,
             full_name,
             avatar_url
           )
-        `
-        )
+        `)
         .eq("video_id", videoId)
         .order("created_at", { ascending: false })
         .limit(50);
@@ -1210,9 +1337,7 @@ function renderComments(comments) {
   if (!commentsList) return;
 
   if (comments.length > 0) {
-    commentsList.innerHTML = comments
-      .map((comment) => createCommentHTML(comment))
-      .join("");
+    commentsList.innerHTML = comments.map((comment) => createCommentHTML(comment)).join("");
   } else {
     commentsList.innerHTML = `
       <div class="no-comments">
@@ -1241,15 +1366,11 @@ function createCommentHTML(comment) {
         <p>${comment.content}</p>
       </div>
       <div class="comment-actions">
-        <button class="comment-action-btn" onclick="likeComment('${
-          comment.id
-        }')">
+        <button class="comment-action-btn" onclick="likeComment('${comment.id}')">
           <span>❤️</span>
           <span>${comment.likes_count || 0}</span>
         </button>
-        <button class="comment-action-btn" onclick="replyToComment('${
-          comment.id
-        }')">
+        <button class="comment-action-btn" onclick="replyToComment('${comment.id}')">
           <span>💬</span>
           <span>Reply</span>
         </button>
@@ -1280,15 +1401,12 @@ async function handleCommentSubmit(e) {
   try {
     let result;
     try {
-      const { data: rpcResult, error: rpcError } = await sb.rpc(
-        "add_video_comment",
-        {
-          p_user_id: currentUser.id,
-          p_video_id: currentVideoIdForComments,
-          p_content: content,
-          p_parent_comment_id: null,
-        }
-      );
+      const { data: rpcResult, error: rpcError } = await sb.rpc("add_video_comment", {
+        p_user_id: currentUser.id,
+        p_video_id: currentVideoIdForComments,
+        p_content: content,
+        p_parent_comment_id: null,
+      });
 
       if (rpcError) throw rpcError;
       result = rpcResult;
@@ -1312,25 +1430,13 @@ async function handleCommentSubmit(e) {
       commentInput.value = "";
       updateCommentCharCount();
       loadVideoComments(currentVideoIdForComments);
-      showMessage(
-        "profile-message",
-        "Comment posted successfully! 💬",
-        "success"
-      );
+      showMessage("profile-message", "Comment posted successfully! 💬", "success");
     } else {
-      showMessage(
-        "profile-message",
-        result?.message || "Failed to post comment",
-        "error"
-      );
+      showMessage("profile-message", result?.message || "Failed to post comment", "error");
     }
   } catch (error) {
     console.error("Error posting comment:", error);
-    showMessage(
-      "profile-message",
-      "Failed to post comment. Please try again.",
-      "error"
-    );
+    showMessage("profile-message", "Failed to post comment. Please try again.", "error");
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
@@ -1346,8 +1452,7 @@ function updateCommentCharCount() {
   if (commentInput && charCount) {
     const length = commentInput.value.length;
     charCount.textContent = `${length}/500`;
-    charCount.style.color =
-      length > 450 ? "var(--warning-color)" : "var(--muted-text)";
+    charCount.style.color = length > 450 ? "var(--warning-color)" : "var(--muted-text)";
   }
 }
 
@@ -1382,10 +1487,9 @@ async function showRequestModal(videoId) {
 
     if (existingRequest) {
       console.log("Existing request found:", existingRequest);
-      const statusText =
-        existingRequest.status === "pending"
-          ? "Your request is pending approval"
-          : `Your request was ${existingRequest.status}`;
+      const statusText = existingRequest.status === "pending"
+        ? "Your request is pending approval"
+        : `Your request was ${existingRequest.status}`;
 
       showMessage("profile-message", statusText, "info");
       return;
@@ -1423,9 +1527,7 @@ async function showRequestModal(videoId) {
 
     if (error.code === "PGRST116") {
       // No existing request found, show modal
-      console.log(
-        "PGRST116 error (no existing request), showing modal anyway..."
-      );
+      console.log("PGRST116 error (no existing request), showing modal anyway...");
       const modal = $("request-modal");
       if (modal) {
         modal.classList.remove("hidden");
@@ -1461,9 +1563,7 @@ async function handleSecretRequest(e) {
   }
 
   const reason = reasonInput.value.trim();
-  const offerType = document.querySelector(
-    'input[name="offer-type"]:checked'
-  )?.value;
+  const offerType = document.querySelector('input[name="offer-type"]:checked')?.value;
   const offerDetails = offerDetailsInput.value.trim();
 
   console.log("Form data:", { reason, offerType, offerDetails });
@@ -1492,17 +1592,14 @@ async function handleSecretRequest(e) {
 
     let result;
     try {
-      const { data: rpcResult, error: rpcError } = await sb.rpc(
-        "add_secret_request",
-        {
-          p_requester_id: currentUser.id,
-          p_video_id: videoId,
-          p_creator_id: video.user_id,
-          p_reason: reason,
-          p_offer_type: offerType,
-          p_offer_details: offerDetails,
-        }
-      );
+      const { data: rpcResult, error: rpcError } = await sb.rpc("add_secret_request", {
+        p_requester_id: currentUser.id,
+        p_video_id: videoId,
+        p_creator_id: video.user_id,
+        p_reason: reason,
+        p_offer_type: offerType,
+        p_offer_details: offerDetails,
+      });
 
       if (rpcError) throw rpcError;
       result = rpcResult;
@@ -1534,50 +1631,28 @@ async function handleSecretRequest(e) {
 
     if (result && result.success !== false) {
       modal.classList.add("hidden");
-      showMessage(
-        "profile-message",
-        result.message || "Request sent successfully! 🎉",
-        "success"
-      );
+      showMessage("profile-message", result.message || "Request sent successfully! 🎉", "success");
 
       reasonInput.value = "";
       offerDetailsInput.value = "";
-      const checkedRadio = document.querySelector(
-        'input[name="offer-type"]:checked'
-      );
+      const checkedRadio = document.querySelector('input[name="offer-type"]:checked');
       if (checkedRadio) checkedRadio.checked = false;
 
       videosLoaded = 0;
       loadVideoFeed();
     } else {
-      showMessage(
-        "profile-message",
-        result?.message || "You have already requested access to this video",
-        "warning"
-      );
+      showMessage("profile-message", result?.message || "You have already requested access to this video", "warning");
       setTimeout(() => modal.classList.add("hidden"), 2000);
     }
   } catch (error) {
     console.error("Request error:", error);
 
     if (error.code === "23505") {
-      showMessage(
-        "profile-message",
-        "You have already requested access to this video",
-        "warning"
-      );
+      showMessage("profile-message", "You have already requested access to this video", "warning");
     } else if (error.message && error.message.includes("duplicate")) {
-      showMessage(
-        "profile-message",
-        "You have already requested access to this video",
-        "warning"
-      );
+      showMessage("profile-message", "You have already requested access to this video", "warning");
     } else {
-      showMessage(
-        "profile-message",
-        "Failed to send request. Please try again.",
-        "error"
-      );
+      showMessage("profile-message", "Failed to send request. Please try again.", "error");
     }
 
     setTimeout(() => modal.classList.add("hidden"), 2000);
@@ -1635,20 +1710,12 @@ function handleVideoSelect(e) {
 
   const maxSize = 100 * 1024 * 1024;
   if (file.size > maxSize) {
-    showMessage(
-      "upload-message",
-      `File size (${formatFileSize(file.size)}) exceeds 100MB limit`,
-      "error"
-    );
+    showMessage("upload-message", `File size (${formatFileSize(file.size)}) exceeds 100MB limit`, "error");
     e.target.value = "";
     return;
   }
 
-  showMessage(
-    "upload-message",
-    `Selected: ${file.name} (${formatFileSize(file.size)})`,
-    "success"
-  );
+  showMessage("upload-message", `Selected: ${file.name} (${formatFileSize(file.size)})`, "success");
 
   if (preview && uploadArea) {
     const video = preview.querySelector("video");
@@ -1696,34 +1763,18 @@ function handleVideoSelect(e) {
         }
 
         // **IMPORTANT: Add event listeners for video load events**
-        video.addEventListener(
-          "loadeddata",
-          () => {
-            console.log("✅ Video data loaded successfully");
-          },
-          { once: true }
-        );
+        video.addEventListener("loadeddata", () => {
+          console.log("✅ Video data loaded successfully");
+        }, { once: true });
 
-        video.addEventListener(
-          "error",
-          (errorEvent) => {
-            console.error("❌ Video load error:", errorEvent);
-            showMessage(
-              "upload-message",
-              "Error loading video preview",
-              "error"
-            );
-          },
-          { once: true }
-        );
+        video.addEventListener("error", (errorEvent) => {
+          console.error("❌ Video load error:", errorEvent);
+          showMessage("upload-message", "Error loading video preview", "error");
+        }, { once: true });
 
-        video.addEventListener(
-          "canplay",
-          () => {
-            console.log("✅ Video can start playing");
-          },
-          { once: true }
-        );
+        video.addEventListener("canplay", () => {
+          console.log("✅ Video can start playing");
+        }, { once: true });
       } catch (error) {
         console.error("❌ Error creating video preview:", error);
         showMessage("upload-message", "Error creating video preview", "error");
@@ -1825,11 +1876,7 @@ async function uploadVideo(e) {
   const category = categoryInput?.value;
 
   if (!title || !category) {
-    showMessage(
-      "upload-message",
-      "Please fill in all required fields",
-      "error"
-    );
+    showMessage("upload-message", "Please fill in all required fields", "error");
     return;
   }
 
@@ -1838,16 +1885,11 @@ async function uploadVideo(e) {
   const secretPreview = secretPreviewInput?.value.trim() || "";
   const isSecretInput = $("is-secret");
   const isSecret = isSecretInput?.checked || false;
-  const accessType =
-    document.querySelector('input[name="access-type"]:checked')?.value ||
-    "free";
+  const accessType = document.querySelector('input[name="access-type"]:checked')?.value || "free";
   const priceInput = $("price");
   const price = priceInput?.value;
   const tagsInput = $("tags");
-  const tags = tagsInput?.value
-    .split(",")
-    .map((tag) => tag.trim())
-    .filter((tag) => tag);
+  const tags = tagsInput?.value.split(",").map((tag) => tag.trim()).filter((tag) => tag);
   const instagramInput = $("instagram-link");
   const instagramLink = instagramInput?.value.trim();
   const durationInput = $("duration");
@@ -1855,20 +1897,12 @@ async function uploadVideo(e) {
 
   // Validation
   if (isSecret && !secretPreview) {
-    showMessage(
-      "upload-message",
-      "Secret preview is required for secret knowledge",
-      "error"
-    );
+    showMessage("upload-message", "Secret preview is required for secret knowledge", "error");
     return;
   }
 
   if (accessType === "paid" && (!price || parseFloat(price) <= 0)) {
-    showMessage(
-      "upload-message",
-      "Please set a valid price for paid content",
-      "error"
-    );
+    showMessage("upload-message", "Please set a valid price for paid content", "error");
     return;
   }
 
@@ -1909,8 +1943,7 @@ async function uploadVideo(e) {
         onUploadProgress: (progress) => {
           const percent = Math.round((progress.loaded / progress.total) * 100);
           if (progressBar) progressBar.style.width = `${percent}%`;
-          if (progressStatus)
-            progressStatus.textContent = `Uploading: ${percent}%`;
+          if (progressStatus) progressStatus.textContent = `Uploading: ${percent}%`;
         },
       });
 
@@ -1953,23 +1986,13 @@ async function uploadVideo(e) {
     if (progressStatus) progressStatus.textContent = "Upload complete!";
 
     const uploadTime = Math.round((Date.now() - uploadStartTime) / 1000);
-    showMessage(
-      "upload-message",
-      `${
-        isSecret ? "Secret" : "Video"
-      } shared successfully in ${uploadTime}s! 🎉`,
-      "success"
-    );
+    showMessage("upload-message", `${isSecret ? "Secret" : "Video"} shared successfully in ${uploadTime}s! 🎉`, "success");
 
     resetUploadForm();
     setTimeout(() => (window.location.href = "home.html"), 2000);
   } catch (error) {
     console.error("Upload error:", error);
-    showMessage(
-      "upload-message",
-      error.message || "Upload failed. Please try again.",
-      "error"
-    );
+    showMessage("upload-message", error.message || "Upload failed. Please try again.", "error");
   } finally {
     isUploading = false;
     if (uploadBtn) {
@@ -2018,20 +2041,12 @@ async function handleProfileUpdate(e) {
   }
 
   if (username.length < 3 || username.length > 30) {
-    showMessage(
-      "profile-message",
-      "Username must be 3-30 characters long",
-      "error"
-    );
+    showMessage("profile-message", "Username must be 3-30 characters long", "error");
     return;
   }
 
   if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-    showMessage(
-      "profile-message",
-      "Username can only contain letters, numbers, and underscores",
-      "error"
-    );
+    showMessage("profile-message", "Username can only contain letters, numbers, and underscores", "error");
     return;
   }
 
@@ -2046,17 +2061,14 @@ async function handleProfileUpdate(e) {
     console.log("Current user ID:", currentUser.id);
 
     // Try the RPC function first
-    const { data: rpcResult, error: rpcError } = await sb.rpc(
-      "update_user_profile",
-      {
-        p_user_id: currentUser.id,
-        p_username: username,
-        p_full_name: fullName,
-        p_bio: bio,
-        p_instagram_handle: instagram,
-        p_website_url: website,
-      }
-    );
+    const { data: rpcResult, error: rpcError } = await sb.rpc("update_user_profile", {
+      p_user_id: currentUser.id,
+      p_username: username,
+      p_full_name: fullName,
+      p_bio: bio,
+      p_instagram_handle: instagram,
+      p_website_url: website,
+    });
 
     console.log("RPC Result:", rpcResult);
     console.log("RPC Error:", rpcError);
@@ -2069,11 +2081,7 @@ async function handleProfileUpdate(e) {
     if (rpcResult && rpcResult.success) {
       console.log("✅ Profile updated successfully via RPC");
 
-      showMessage(
-        "profile-message",
-        "Profile updated successfully! ✅",
-        "success"
-      );
+      showMessage("profile-message", "Profile updated successfully! ✅", "success");
 
       // Update the current user metadata
       currentUser.user_metadata = {
@@ -2092,21 +2100,14 @@ async function handleProfileUpdate(e) {
         });
         console.log("✅ Auth metadata updated");
       } catch (authError) {
-        console.log(
-          "⚠️ Auth metadata update failed (non-critical):",
-          authError
-        );
+        console.log("⚠️ Auth metadata update failed (non-critical):", authError);
       }
 
       // Reload profile data to update display
       setTimeout(() => loadUserProfileData(), 1000);
     } else {
       console.error("❌ RPC returned failure:", rpcResult);
-      showMessage(
-        "profile-message",
-        rpcResult?.message || "Failed to update profile",
-        "error"
-      );
+      showMessage("profile-message", rpcResult?.message || "Failed to update profile", "error");
     }
   } catch (error) {
     console.error("❌ Profile update error:", error);
@@ -2150,11 +2151,7 @@ async function handleProfileUpdate(e) {
       }
 
       console.log("✅ Profile updated successfully via direct update");
-      showMessage(
-        "profile-message",
-        "Profile updated successfully! ✅",
-        "success"
-      );
+      showMessage("profile-message", "Profile updated successfully! ✅", "success");
 
       setTimeout(() => loadUserProfileData(), 1000);
     } catch (fallbackError) {
@@ -2163,11 +2160,7 @@ async function handleProfileUpdate(e) {
       if (fallbackError.code === "23505") {
         showMessage("profile-message", "Username already taken", "error");
       } else {
-        showMessage(
-          "profile-message",
-          `Update failed: ${fallbackError.message}`,
-          "error"
-        );
+        showMessage("profile-message", `Update failed: ${fallbackError.message}`, "error");
       }
     }
   } finally {
@@ -2185,8 +2178,7 @@ async function handlePasswordChange(e) {
   const newPasswordInput = $("new-password");
   const confirmPasswordInput = $("confirm-password");
 
-  if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput)
-    return;
+  if (!currentPasswordInput || !newPasswordInput || !confirmPasswordInput) return;
 
   const currentPassword = currentPasswordInput.value;
   const newPassword = newPasswordInput.value;
@@ -2198,11 +2190,7 @@ async function handlePasswordChange(e) {
   }
 
   if (newPassword.length < 6) {
-    showMessage(
-      "profile-message",
-      "Password must be at least 6 characters",
-      "error"
-    );
+    showMessage("profile-message", "Password must be at least 6 characters", "error");
     return;
   }
 
@@ -2231,19 +2219,11 @@ async function handlePasswordChange(e) {
 
     if (error) throw error;
 
-    showMessage(
-      "profile-message",
-      "Password changed successfully! 🔒",
-      "success"
-    );
+    showMessage("profile-message", "Password changed successfully! 🔒", "success");
     e.target.reset();
   } catch (error) {
     console.error("Error changing password:", error);
-    showMessage(
-      "profile-message",
-      "Failed to change password. Please try again.",
-      "error"
-    );
+    showMessage("profile-message", "Failed to change password. Please try again.", "error");
   } finally {
     if (submitBtn) {
       submitBtn.disabled = false;
@@ -2265,14 +2245,11 @@ async function handlePrivacySettings() {
     // Try RPC function first
     let result;
     try {
-      const { data: rpcResult, error: rpcError } = await sb.rpc(
-        "update_privacy_settings",
-        {
-          p_user_id: currentUser.id,
-          p_is_public: isPublic,
-          p_allow_requests: allowRequests,
-        }
-      );
+      const { data: rpcResult, error: rpcError } = await sb.rpc("update_privacy_settings", {
+        p_user_id: currentUser.id,
+        p_is_public: isPublic,
+        p_allow_requests: allowRequests,
+      });
 
       if (rpcError) throw rpcError;
       result = rpcResult;
@@ -2299,19 +2276,11 @@ async function handlePrivacySettings() {
     if (result && result.success) {
       showMessage("profile-message", "Privacy settings updated! 🛡️", "success");
     } else {
-      showMessage(
-        "profile-message",
-        result?.message || "Failed to update privacy settings",
-        "error"
-      );
+      showMessage("profile-message", result?.message || "Failed to update privacy settings", "error");
     }
   } catch (error) {
     console.error("Error updating privacy settings:", error);
-    showMessage(
-      "profile-message",
-      "Failed to update privacy settings",
-      "error"
-    );
+    showMessage("profile-message", "Failed to update privacy settings", "error");
   }
 }
 
@@ -2322,8 +2291,7 @@ function updateBioCharCount() {
   if (bioInput && charCount) {
     const length = bioInput.value.length;
     charCount.textContent = `${length}/500`;
-    charCount.style.color =
-      length > 450 ? "var(--warning-color)" : "var(--muted-text)";
+    charCount.style.color = length > 450 ? "var(--warning-color)" : "var(--muted-text)";
   }
 }
 
@@ -2387,10 +2355,7 @@ async function incrementViews(videoId) {
 function shareVideo(video) {
   const shareData = {
     title: video.title,
-    text:
-      video.secret_preview ||
-      video.description ||
-      "Check out this secret knowledge!",
+    text: video.secret_preview || video.description || "Check out this secret knowledge!",
     url: window.location.origin + window.location.pathname,
   };
 
@@ -2399,54 +2364,8 @@ function shareVideo(video) {
   } else {
     navigator.clipboard
       .writeText(shareData.url)
-      .then(() =>
-        showMessage(
-          "profile-message",
-          "Link copied to clipboard! 📋",
-          "success"
-        )
-      )
-      .catch(() =>
-        showMessage("profile-message", "Unable to share video", "error")
-      );
-  }
-}
-
-/* ---------- NOTIFICATIONS ---------- */
-async function loadNotifications() {
-  try {
-    const { data: notifications, error } = await sb
-      .from("notifications")
-      .select("*")
-      .eq("user_id", currentUser.id)
-      .order("created_at", { ascending: false })
-      .limit(10);
-
-    if (error) throw error;
-
-    const unreadCount = notifications.filter((n) => !n.is_read).length;
-    const badge = $("notification-count");
-
-    if (badge) {
-      if (unreadCount > 0) {
-        badge.textContent = unreadCount;
-        badge.style.display = "block";
-      } else {
-        badge.style.display = "none";
-      }
-    }
-
-    // Also load creator requests count
-    loadCreatorRequests();
-  } catch (error) {
-    console.error("Notifications error:", error);
-  }
-}
-
-function toggleNotifications() {
-  const panel = $("notifications-panel");
-  if (panel) {
-    panel.classList.toggle("hidden");
+      .then(() => showMessage("profile-message", "Link copied to clipboard! 📋", "success"))
+      .catch(() => showMessage("profile-message", "Unable to share video", "error"));
   }
 }
 
@@ -2485,9 +2404,7 @@ function saveDraft() {
     secretPreview: secretInput?.value || "",
     category: categoryInput?.value || "",
     isSecret: isSecretInput?.checked || false,
-    accessType:
-      document.querySelector('input[name="access-type"]:checked')?.value ||
-      "free",
+    accessType: document.querySelector('input[name="access-type"]:checked')?.value || "free",
     price: priceInput?.value || "",
     tags: tagsInput?.value || "",
     instagramLink: instagramInput?.value || "",
@@ -2524,9 +2441,7 @@ function loadDraft() {
     if (instagramInput) instagramInput.value = draft.instagramLink || "";
 
     if (draft.accessType) {
-      const accessInput = document.querySelector(
-        `input[name="access-type"][value="${draft.accessType}"]`
-      );
+      const accessInput = document.querySelector(`input[name="access-type"][value="${draft.accessType}"]`);
       if (accessInput) accessInput.checked = true;
     }
 
@@ -2584,19 +2499,6 @@ async function loadMoreVideos() {
   }
 }
 
-async function logout() {
-  try {
-    const { error } = await sb.auth.signOut();
-    if (error) throw error;
-
-    localStorage.removeItem("videoDraft");
-    window.location.href = "index.html";
-  } catch (error) {
-    console.error("Logout error:", error);
-    window.location.href = "index.html";
-  }
-}
-
 /* ---------- PLACEHOLDER FUNCTIONS FOR MISSING FEATURES ---------- */
 function likeComment(commentId) {
   console.log("Like comment:", commentId);
@@ -2640,6 +2542,10 @@ window.debugFunctions = {
   handleSecretRequest,
   handleCommentSubmit,
   loadUserProfileData,
+  loadNotifications,
+  updateNotificationBadge,
+  toggleNotifications,
+  setupNotificationSubscription,
   testVideoPreview: () => {
     console.log("=== VIDEO PREVIEW DEBUG ===");
 
