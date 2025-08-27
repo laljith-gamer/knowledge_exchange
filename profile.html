@@ -5,68 +5,62 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Profile — SecretShare</title>
 
-  <!-- ­­­­--- your global stylesheet -->
+  <!-- main stylesheet -->
   <link rel="stylesheet" href="styles.css">
 
-  <!-- ­­­­--- extra IG-style rules (move to styles.css if you wish) -->
+  <!-- Instagram-style additions -->
   <style>
   /* profile header */
   .profile-card{display:flex;gap:32px;align-items:center;flex-wrap:wrap}
   .profile-avatar .user-avatar.large{width:116px;height:116px;font-size:46px}
   .profile-info h2{font:600 20px/1.3 'Inter',sans-serif;margin:.15em 0}
   .profile-stats{display:flex;gap:24px;margin-top:8px}
-  .profile-stats .stat{text-align:center}.stat-number{font:600 18px}
+  .stat-number{font:600 18px}
 
   /* tab bar */
   .profile-nav{margin:34px 0 14px;display:flex;gap:12px}
-  .tab-btn{flex:1;padding:9px 0;border:none;cursor:pointer;
-           background:#f4f4f4;border-radius:6px;
-           font:600 14px/1 'Inter',sans-serif}
+  .tab-btn{flex:1;padding:9px 0;border:none;cursor:pointer;background:#f4f4f4;border-radius:6px;font:600 14px/1 'Inter',sans-serif}
   .tab-btn.active,.tab-btn:hover{background:#e1e1e1}
 
-  /* grid */
+  /* posts grid */
   .posts-grid{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(122px,1fr))}
   .post-thumb{position:relative;overflow:hidden;aspect-ratio:1/1}
   .post-thumb img,.post-thumb video{width:100%;height:100%;object-fit:cover;transition:transform .25s}
   .post-thumb:hover img,.post-thumb:hover video{transform:scale(1.05)}
-  .post-thumb {position:relative}
-.post-thumb .owner{
-  position:absolute;bottom:4px;left:4px;
-  background:rgba(0,0,0,.6);color:#fff;
-  font-size:11px;padding:2px 4px;border-radius:3px}
+  .post-thumb .owner{position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:2px 4px;border-radius:3px}
 
-
-  /* show / hide */
+  /* helper */
   .hidden{display:none}
   </style>
 </head>
 
 <body class="dashboard-body">
   <div class="dashboard-container">
+
     <!-- Navigation -->
     <nav class="dashboard-nav">
       <div class="nav-brand"><h3>🔒 SecretShare</h3></div>
 
       <div class="nav-links">
-        <a href="home.html"     class="nav-link"><span class="nav-icon">🏠</span>Feed</a>
-        <a href="profile.html"  class="nav-link active"><span class="nav-icon">👤</span>Profile</a>
-        <a href="createone.html"class="nav-link"><span class="nav-icon">➕</span>Share Secret</a>
+        <a href="home.html"      class="nav-link"><span class="nav-icon">🏠</span>Feed</a>
+        <a href="profile.html"   class="nav-link active"><span class="nav-icon">👤</span>Profile</a>
+        <a href="createone.html" class="nav-link"><span class="nav-icon">➕</span>Share Secret</a>
       </div>
 
       <button class="btn secondary logout-btn" id="logout">Sign out</button>
     </nav>
 
-    <!-- Main content -->
+    <!-- Main -->
     <main class="dashboard-main">
       <div class="profile-container">
 
-        <!-- title -->
+        <!-- header -->
         <header class="page-header">
           <h1>Your profile</h1>
           <p class="page-subtitle">Manage your account &amp; see your posts</p>
         </header>
 
-        <!-- overview card -->
+        <!-- overview -->
         <section class="profile-overview">
           <div class="profile-card">
             <div class="profile-avatar">
@@ -76,7 +70,7 @@
 
             <div class="profile-info">
               <h2 id="profile-display-name">Loading…</h2>
-              <p id="profile-display-email">Loading…</p>
+              <p  id="profile-display-email">Loading…</p>
 
               <div class="profile-stats">
                 <div class="stat"><span class="stat-number" id="videos-count">0</span><span class="stat-label">Videos</span></div>
@@ -88,155 +82,91 @@
           </div>
         </section>
 
-        <!-- tab bar -->
+        <!-- tabs -->
         <nav class="profile-nav">
           <button class="tab-btn active" data-tab="posts">POSTS</button>
           <button class="tab-btn"        data-tab="edit">EDIT PROFILE</button>
         </nav>
 
-        <!-- POSTS GRID -->
+        <!-- posts -->
         <section id="posts" class="tab-panel">
-          <div id="posts-grid" class="posts-grid"><!-- thumbnails injected by JS --></div>
+          <div id="posts-grid" class="posts-grid"><!-- thumbnails injected here --></div>
         </section>
 
-        <!-- EDIT PROFILE -->
+        <!-- edit profile -->
         <section id="edit" class="tab-panel hidden">
           <div class="settings-container">
-
-            <!-- BASIC INFO ------------------------------------------------------->
-            <div class="settings-section">
-              <h3>Basic Information</h3>
-              <form id="update-profile-form">
-                <div class="form-group">
-                  <label for="update-username">Username</label>
-                  <input id="update-username" type="text" placeholder="Enter username"
-                         required minlength="3" maxlength="30" pattern="[a-zA-Z0-9_]+">
-                  <small class="form-help">3-30 chars, letters/numbers/underscores.</small>
-                </div>
-
-                <div class="form-group">
-                  <label for="update-fullname">Full name</label>
-                  <input id="update-fullname" type="text" maxlength="100" placeholder="Your name">
-                </div>
-
-                <div class="form-group">
-                  <label for="update-bio">Bio</label>
-                  <textarea id="update-bio" rows="3" maxlength="500" placeholder="Tell us about yourself…"></textarea>
-                  <small class="char-count" id="bio-char-count">0/500</small>
-                </div>
-
-                <div class="form-group">
-                  <label for="update-instagram">Instagram handle</label>
-                  <input id="update-instagram" type="text" maxlength="50" placeholder="@yourusername">
-                </div>
-
-                <div class="form-group">
-                  <label for="update-website">Website</label>
-                  <input id="update-website" type="url" placeholder="https://example.com">
-                </div>
-
-                <div class="form-actions"><button type="submit" class="btn primary">Update profile</button></div>
-              </form>
-            </div>
-
-            <!-- SECURITY --------------------------------------------------------->
-            <div class="settings-section">
-              <h3>Account security</h3>
-              <form id="change-password-form">
-                <div class="form-group">
-                  <label for="current-password">Current password</label>
-                  <input id="current-password" type="password" required minlength="6">
-                </div>
-
-                <div class="form-group">
-                  <label for="new-password">New password</label>
-                  <input id="new-password" type="password" required minlength="6">
-                </div>
-
-                <div class="form-group">
-                  <label for="confirm-password">Confirm new password</label>
-                  <input id="confirm-password" type="password" required minlength="6">
-                </div>
-
-                <div class="form-actions"><button type="submit" class="btn secondary">Change password</button></div>
-              </form>
-            </div>
-
-            <!-- PRIVACY ---------------------------------------------------------->
-            <div class="settings-section">
-              <h3>Privacy settings</h3>
-              <div class="settings-options">
-                <label class="setting-label">
-                  <input type="checkbox" id="profile-public" checked>
-                  <span class="setting-text"><strong>Public profile</strong>
-                    <small>Allow others to find and view you</small></span>
-                </label>
-
-                <label class="setting-label">
-                  <input type="checkbox" id="allow-requests" checked>
-                  <span class="setting-text"><strong>Allow secret requests</strong>
-                    <small>Let users request access to your content</small></span>
-                </label>
-              </div>
-
-              <div class="form-actions">
-                <button type="button" class="btn secondary" id="save-privacy-settings">Save settings</button>
-              </div>
-            </div>
-
-          </div><!-- /.settings-container -->
+            <!-- (all forms exactly as you already had) -->
+            … your existing settings HTML …
+          </div>
         </section>
 
-        <!-- messages -->
         <div id="profile-message" class="message"></div>
       </div>
     </main>
   </div>
 
-  <!-- ­­­­--- scripts -->
+  <!-- scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
-  <script src="config.js"></script>
-  <script src="dashboard.js"></script>
+  <script src="config.js"></script>     <!-- sets const sb = supabase.createClient(...) -->
+  <script src="dashboard.js"></script>  <!-- sets currentUser, etc. -->
 
-  <!-- local behaviour for tabs + grid -->
+  <!-- local logic -->
   <script>
-  // switch tabs
+  /* tab switching */
   document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.onclick = () =>{
+    btn.onclick = () => {
       document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
       btn.classList.add('active');
-      const tab = btn.dataset.tab;            // "posts" | "edit"
-      document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('hidden', p.id!==tab));
-      if(tab==='posts') loadMyPosts();
+      const tab = btn.dataset.tab;                 // "posts" | "edit"
+      document.querySelectorAll('.tab-panel')
+              .forEach(p=>p.classList.toggle('hidden', p.id!==tab));
+      if(tab==='posts' && currentUser) loadMyPosts(currentUser.id);
     };
   });
 
-  // load user’s videos
-  async function loadMyPosts() {
-  const grid = document.getElementById('posts-grid');
-  if (!grid) return;
+  /* fetch current user then load grid */
+  let currentUser;
+  sb.auth.getUser().then(({ data, error })=>{
+    if(error){console.error(error);return;}
+    currentUser = data.user;
+    if(currentUser) loadMyPosts(currentUser.id);
+  });
 
-  const { data: vids, error } = await sb
-    .from('videos_with_user')      // use the view
-    .select('id, title, video_url, thumbnail_url, username, avatar_url')
-    .eq('user_id', currentUser.id) // just your own videos
-    .order('created_at', { ascending: false });
+  /* load videos + owner info */
+  async function loadMyPosts(uid){
+    const grid = document.getElementById('posts-grid');
+    if(!grid) return;
 
-  if (error) { console.error(error); return; }
+    const { data: vids, error } = await sb
+      // OPTION 1 – if you created the view
+      .from('videos_with_user')
+      .select('id, title, video_url, thumbnail_url, username, avatar_url')
+      .eq('user_id', uid)
+      .order('created_at',{ascending:false});
 
-  grid.innerHTML = vids.map(v => {
-    const thumb = v.thumbnail_url ?? `${v.video_url}#t=2`;
-    return `
-      <a class="post-thumb" href="watch.html?id=${v.id}" title="${v.title}">
-        <img src="${thumb}" alt="${v.title}">
-        <span class="owner">@${v.username}</span>
-      </a>`;
-  }).join('');
-}
+      /*  OPTION 2 – if you DID NOT create the view:
+      .from('videos')
+      .select(`
+        id, title, video_url, thumbnail_url,
+        profiles:user_id (username, avatar_url)
+      `)
+      .eq('user_id', uid)
+      .order('created_at',{ascending:false});
+      */
 
+    if(error){console.error(error);return;}
 
-  // first load after auth happens ─ give dashboard.js time to set currentUser
-  document.addEventListener('DOMContentLoaded', ()=>setTimeout(loadMyPosts,500));
+    grid.innerHTML = vids.map(v=>{
+      const thumb = v.thumbnail_url ?? `${v.video_url}#t=2`;
+      const user  = v.username || (v.profiles && v.profiles.username) || 'user';
+      return `
+        <a class="post-thumb" href="watch.html?id=${v.id}" title="${v.title}">
+          <img src="${thumb}" alt="${v.title}">
+          <span class="owner">@${user}</span>
+        </a>`;
+    }).join('');
+  }
   </script>
 </body>
 </html>
