@@ -1,172 +1,195 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Profile — skillShare</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Profile – SecretShare</title>
 
-  <!-- main stylesheet -->
-  <link rel="stylesheet" href="styles.css">
-
-  <!-- Instagram-style additions -->
+  <!-- ====== basic, self-contained styles ====== -->
   <style>
+  *,*::before,*::after{box-sizing:border-box}
+  body{margin:0;font-family:Arial,Helvetica,sans-serif;background:#fff;color:#222}
+  .wrapper{max-width:960px;margin:0 auto;padding:20px}
+
+  /* top nav */
+  nav{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #ddd;padding:10px 0 14px}
+  nav .links a{margin-right:18px;text-decoration:none;font-weight:bold;color:#444}
+  nav .links a.active{color:#000;border-bottom:2px solid #000;padding-bottom:2px}
+  nav button#logout{background:#f44336;color:#fff;border:none;padding:6px 14px;border-radius:4px;cursor:pointer}
+
   /* profile header */
-  .profile-card{display:flex;gap:32px;align-items:center;flex-wrap:wrap}
-  .profile-avatar .user-avatar.large{width:116px;height:116px;font-size:46px}
-  .profile-info h2{font:600 20px/1.3 'Inter',sans-serif;margin:.15em 0}
-  .profile-stats{display:flex;gap:24px;margin-top:8px}
-  .stat-number{font:600 18px}
+  .profile{display:flex;align-items:center;margin:32px 0 18px}
+  .avatar{width:120px;height:120px;border-radius:50%;background:#bbb;color:#fff;font-size:64px;
+          display:flex;align-items:center;justify-content:center;margin-right:24px}
+  .profile h1{margin:0;font-size:28px}
+  .profile p{margin:5px 0;color:#666}
+  .stats{display:flex;gap:34px;margin-top:12px}
+  .stats div{text-align:center}
+  .stats span{display:block;font-weight:bold;font-size:18px}
 
-  /* tab bar */
-  .profile-nav{margin:34px 0 14px;display:flex;gap:12px}
-  .tab-btn{flex:1;padding:9px 0;border:none;cursor:pointer;background:#f4f4f4;border-radius:6px;font:600 14px/1 'Inter',sans-serif}
-  .tab-btn.active,.tab-btn:hover{background:#e1e1e1}
+  /* tabs */
+  .tabs{display:flex;gap:10px;border-top:1px solid #ddd;margin-bottom:22px}
+  .tabs button{flex:1;padding:12px 0;border:none;font-weight:bold;background:#f5f5f5;cursor:pointer;border-radius:6px 6px 0 0}
+  .tabs button.active{background:#fff;border-bottom:3px solid #000}
 
-  /* posts grid */
-  .posts-grid{display:grid;gap:6px;grid-template-columns:repeat(auto-fill,minmax(122px,1fr))}
-  .post-thumb{position:relative;overflow:hidden;aspect-ratio:1/1}
-  .post-thumb img,.post-thumb video{width:100%;height:100%;object-fit:cover;transition:transform .25s}
-  .post-thumb:hover img,.post-thumb:hover video{transform:scale(1.05)}
-  .post-thumb .owner{position:absolute;bottom:4px;left:4px;background:rgba(0,0,0,.6);color:#fff;font-size:11px;padding:2px 4px;border-radius:3px}
+  /* panels */
+  .panel{display:none}
+  .panel.active{display:block}
 
-  /* helper */
-  .hidden{display:none}
+  /* video grid */
+  .grid{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(170px,1fr))}
+  .thumb{position:relative;aspect-ratio:1/1;border-radius:6px;overflow:hidden;cursor:pointer}
+  .thumb img,.thumb video{width:100%;height:100%;object-fit:cover;transition:transform .3s}
+  .thumb:hover img,.thumb:hover video{transform:scale(1.05)}
+  .info{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);color:#fff;font-size:12px;
+        display:flex;justify-content:space-between;align-items:center;padding:4px 6px}
+  .info .title{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:70%}
+
+  /* form */
+  form{max-width:600px}
+  label{display:block;margin-top:16px;font-weight:bold}
+  input,textarea{width:100%;margin-top:6px;padding:8px;border:1px solid #ccc;border-radius:4px;font-size:14px}
+  textarea{resize:vertical;height:80px}
+  button.submit{margin-top:22px;padding:10px 22px;background:#007bff;color:#fff;border:none;border-radius:4px;cursor:pointer}
+  .msg{margin-top:12px;font-weight:bold}
   </style>
 </head>
 
-<body class="dashboard-body">
-  <div class="dashboard-container">
+<body>
+<div class="wrapper">
+  <!-- NAVIGATION -->
+  <nav>
+    <div class="links">
+      <a href="home.html">🏠 Feed</a>
+      <a href="profile.html" class="active">👤 Profile</a>
+      <a href="createone.html">➕ Share</a>
+    </div>
+    <button id="logout">Sign out</button>
+  </nav>
 
-    <!-- Navigation -->
-    <nav class="dashboard-nav">
-      <div class="nav-brand"><h3>skillShare</h3></div>
-
-      <div class="nav-links">
-        <a href="home.html"      class="nav-link"><span class="nav-icon">🏠</span>Feed</a>
-        <a href="profile.html"   class="nav-link active"><span class="nav-icon">👤</span>Profile</a>
-        <a href="createone.html" class="nav-link"><span class="nav-icon">➕</span>Share Secret</a>
+  <!-- PROFILE HEADER -->
+  <section class="profile">
+    <div id="avatar" class="avatar">U</div>
+    <div>
+      <h1 id="name">Loading…</h1>
+      <p id="email">Loading…</p>
+      <div class="stats">
+        <div><span id="v-count">0</span>Videos</div>
+        <div><span id="foll-count">0</span>Followers</div>
+        <div><span id="wing-count">0</span>Following</div>
+        <div><span id="view-count">0</span>Views</div>
       </div>
+    </div>
+  </section>
 
-      <button class="btn secondary logout-btn" id="logout">Sign out</button>
-    </nav>
-
-    <!-- Main -->
-    <main class="dashboard-main">
-      <div class="profile-container">
-
-        <!-- header -->
-        <header class="page-header">
-          <h1>Your profile</h1>
-          <p class="page-subtitle">Manage your account &amp; see your posts</p>
-        </header>
-
-        <!-- overview -->
-        <section class="profile-overview">
-          <div class="profile-card">
-            <div class="profile-avatar">
-              <div class="user-avatar large" id="profile-avatar">👤</div>
-              <button class="btn secondary small">Change avatar</button>
-            </div>
-
-            <div class="profile-info">
-              <h2 id="profile-display-name">Loading…</h2>
-              <p  id="profile-display-email">Loading…</p>
-
-              <div class="profile-stats">
-                <div class="stat"><span class="stat-number" id="videos-count">0</span><span class="stat-label">Videos</span></div>
-                <div class="stat"><span class="stat-number" id="followers-count">0</span><span class="stat-label">Followers</span></div>
-                <div class="stat"><span class="stat-number" id="following-count">0</span><span class="stat-label">Following</span></div>
-                <div class="stat"><span class="stat-number" id="total-views">0</span><span class="stat-label">Views</span></div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        <!-- tabs -->
-        <nav class="profile-nav">
-          <button class="tab-btn active" data-tab="posts">POSTS</button>
-          <button class="tab-btn"        data-tab="edit">EDIT PROFILE</button>
-        </nav>
-
-        <!-- posts -->
-        <section id="posts" class="tab-panel">
-          <div id="posts-grid" class="posts-grid"><!-- thumbnails injected here --></div>
-        </section>
-
-        <!-- edit profile -->
-        <section id="edit" class="tab-panel hidden">
-          <div class="settings-container">
-            <!-- (all forms exactly as you already had) -->
-            … your existing settings HTML …
-          </div>
-        </section>
-
-        <div id="profile-message" class="message"></div>
-      </div>
-    </main>
+  <!-- TABS -->
+  <div class="tabs">
+    <button class="tab-btn active" data-tab="posts">Posts</button>
+    <button class="tab-btn"        data-tab="edit">Edit Profile</button>
   </div>
 
-  <!-- scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.39.3/dist/umd/supabase.min.js"></script>
-  <script src="config.js"></script>     <!-- sets const sb = supabase.createClient(...) -->
-  <script src="dashboard.js"></script>  <!-- sets currentUser, etc. -->
+  <!-- POSTS PANEL -->
+  <section id="posts" class="panel active">
+    <div id="grid" class="grid"></div>
+  </section>
 
-  <!-- local logic -->
-  <script>
-  /* tab switching */
-  document.querySelectorAll('.tab-btn').forEach(btn=>{
-    btn.onclick = () => {
-      document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-      btn.classList.add('active');
-      const tab = btn.dataset.tab;                 // "posts" | "edit"
-      document.querySelectorAll('.tab-panel')
-              .forEach(p=>p.classList.toggle('hidden', p.id!==tab));
-      if(tab==='posts' && currentUser) loadMyPosts(currentUser.id);
-    };
-  });
+  <!-- EDIT PANEL -->
+  <section id="edit" class="panel">
+    <form id="profile-form">
+      <label>Username <input id="username" required pattern="\\w+" minlength="3" maxlength="30"></label>
+      <label>Full name <input id="fullname"></label>
+      <label>Bio <textarea id="bio" maxlength="500"></textarea></label>
+      <label>Instagram <input id="instagram" maxlength="50"></label>
+      <label>Website <input id="website" type="url"></label>
+      <button type="submit" class="submit">Update profile</button>
+    </form>
+    <div id="msg" class="msg"></div>
+  </section>
+</div>
 
-  /* fetch current user then load grid */
-  let currentUser;
-  sb.auth.getUser().then(({ data, error })=>{
-    if(error){console.error(error);return;}
-    currentUser = data.user;
-    if(currentUser) loadMyPosts(currentUser.id);
-  });
+<!-- SUPABASE -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const sb = supabase.createClient('YOUR_SUPABASE_URL','YOUR_SUPABASE_ANON_KEY');
+let user=null;
 
-  /* load videos + owner info */
-  async function loadMyPosts(uid){
-    const grid = document.getElementById('posts-grid');
-    if(!grid) return;
+/* ---------- load profile ---------- */
+async function loadProfile(){
+  const {data:{user:u}}=await sb.auth.getUser();
+  if(!u){location='login.html';return;}
+  user=u;
+  avatar.textContent=u.email[0].toUpperCase();
 
-    const { data: vids, error } = await sb
-      // OPTION 1 – if you created the view
-      .from('videos_with_user')
-      .select('id, title, video_url, thumbnail_url, username, avatar_url')
-      .eq('user_id', uid)
-      .order('created_at',{ascending:false});
+  const {data:p}=await sb.from('profiles').select('*').eq('id',u.id).single();
+  if(p){
+    name.textContent=p.username||'User';
+    email.textContent=u.email||'';
+    v-count.textContent=p.videos_count||0;
+    foll-count.textContent=p.followers_count||0;
+    wing-count.textContent=p.following_count||0;
+    view-count.textContent=p.total_views||0;
 
-      /*  OPTION 2 – if you DID NOT create the view:
-      .from('videos')
-      .select(`
-        id, title, video_url, thumbnail_url,
-        profiles:user_id (username, avatar_url)
-      `)
-      .eq('user_id', uid)
-      .order('created_at',{ascending:false});
-      */
-
-    if(error){console.error(error);return;}
-
-    grid.innerHTML = vids.map(v=>{
-      const thumb = v.thumbnail_url ?? `${v.video_url}#t=2`;
-      const user  = v.username || (v.profiles && v.profiles.username) || 'user';
-      return `
-        <a class="post-thumb" href="watch.html?id=${v.id}" title="${v.title}">
-          <img src="${thumb}" alt="${v.title}">
-          <span class="owner">@${user}</span>
-        </a>`;
-    }).join('');
+    username.value=p.username||'';
+    fullname.value=p.full_name||'';
+    bio.value=p.bio||'';
+    instagram.value=p.instagram_handle||'';
+    website.value=p.website_url||'';
   }
-  </script>
+  loadVideos();
+}
+
+/* ---------- load videos ---------- */
+async function loadVideos(){
+  const {data, error}=await sb.from('videos')
+    .select('id,title,video_url,thumbnail_url')
+    .eq('user_id',user.id).eq('is_published',true)
+    .order('created_at',{ascending:false});
+  if(error){console.error(error);return;}
+
+  grid.innerHTML=data.map(v=>{
+    const media=v.thumbnail_url
+      ? `<img src="${v.thumbnail_url}" alt="${v.title}">`
+      : `<video muted preload="metadata" src="${v.video_url}"></video>`;
+    return `
+      <a href="watch.html?id=${v.id}" class="thumb" title="${v.title}">
+        ${media}
+        <div class="info">
+          <span class="title">${v.title}</span>
+        </div>
+      </a>`;
+  }).join('');
+}
+
+/* ---------- update profile ---------- */
+profile-form.onsubmit=async e=>{
+  e.preventDefault();
+  const {error}=await sb.from('profiles').update({
+    username:username.value,
+    full_name:fullname.value,
+    bio:bio.value,
+    instagram_handle:instagram.value,
+    website_url:website.value,
+    updated_at:new Date().toISOString()
+  }).eq('id',user.id);
+  msg.textContent=error?'Update failed':'Profile updated ✔';
+};
+
+/* ---------- tab switching ---------- */
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.onclick=()=>{
+    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab=btn.dataset.tab;
+    document.querySelectorAll('.panel').forEach(p=>p.classList.toggle('active',p.id===tab));
+    if(tab==='posts') loadVideos();
+  };
+});
+
+/* ---------- logout ---------- */
+logout.onclick=async()=>{await sb.auth.signOut();location='/';};
+
+/* ---------- init ---------- */
+document.addEventListener('DOMContentLoaded',loadProfile);
+</script>
 </body>
 </html>
