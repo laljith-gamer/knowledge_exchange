@@ -1023,6 +1023,6 @@ GRANT EXECUTE ON FUNCTION get_user_by_username(TEXT) TO authenticated;
 -- =====================================================
 
 SELECT 
-  'SecretShare platform database created successfully! 🎉' as status,
+  'skillShare platform database created successfully! 🎉' as status,
   'All tables, triggers, and functions are ready.' as message,
   'Your frontend can now interact with the complete schema.' as note;

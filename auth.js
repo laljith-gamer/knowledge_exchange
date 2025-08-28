@@ -247,7 +247,7 @@ async function onCheck(e) {
     } else {
       // New user, go to signup
       isNewSignup = true;
-      $("signup-label").textContent = `Create your SecretShare account`;
+      $("signup-label").textContent = `Create your skillShare account`;
       show("step-signup");
     }
   } catch (error) {
@@ -544,7 +544,7 @@ async function onCompleteProfile(e) {
     }
 
     // Success
-    showLoadingOverlay(true, "Welcome to SecretShare! Redirecting...");
+    showLoadingOverlay(true, "Welcome to skillShare! Redirecting...");
 
     setTimeout(() => {
       window.location.href = "home.html";
